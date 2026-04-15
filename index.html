@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USAM — Sistema de Cuestionarios en Línea</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #0f2044; --navy-mid: #1a3260; --navy-light: #2a4a8a;
+    --gold: #c9a227; --gold-light: #e8c14d;
+    --cream: #faf8f3; --white: #ffffff;
+    --gray-100: #f4f3ef; --gray-200: #e8e6e0; --gray-400: #9a9690;
+    --gray-600: #5a5750; --gray-800: #2e2c28;
+    --danger: #c0392b; --success: #1a7a4a;
+    --radius: 10px; --shadow: 0 4px 24px rgba(15,32,68,0.10);
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--gray-800); min-height: 100vh; font-size: 15px; line-height: 1.6; }
+  .view { display: none; min-height: 100vh; }
+  .view.active { display: flex; flex-direction: column; }
+  .app-header { background: var(--navy); color: var(--white); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 2px 12px rgba(15,32,68,0.18); flex-wrap: wrap; }
+  .app-header .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-badge { background: var(--gold); color: var(--navy); font-family: 'DM Serif Display', serif; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
+  .brand-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--white); }
+  .brand-sub { font-size: 11px; color: rgba(255,255,255,0.55); letter-spacing: 0.8px; text-transform: uppercase; margin-top: 1px; }
+  .header-role-badge { background: rgba(201,162,39,0.18); border: 1px solid rgba(201,162,39,0.4); color: var(--gold-light); font-size: 11px; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; }
+  .main-content { flex: 1; padding: 32px 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
+  #view-landing { align-items: center; justify-content: center; background: var(--navy); min-height: 100vh; }
+  .landing-inner { display: flex; flex-direction: column; align-items: center; padding: 40px 20px; width: 100%; max-width: 560px; margin: auto; }
+  .landing-logo { font-family: 'DM Serif Display', serif; font-size: 13px; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 40px; opacity: 0.9; text-align: center; line-height: 1.6; }
+  .landing-title { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--white); text-align: center; line-height: 1.2; margin-bottom: 8px; }
+  .landing-title em { color: var(--gold-light); font-style: italic; }
+  .landing-sub { color: rgba(255,255,255,0.45); text-align: center; font-size: 13px; margin-bottom: 48px; }
+  .landing-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; }
+  .landing-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 28px 20px; cursor: pointer; transition: all 0.22s; text-align: center; }
+  .landing-card:hover { background: rgba(201,162,39,0.12); border-color: rgba(201,162,39,0.4); transform: translateY(-2px); }
+  .landing-card .icon { font-size: 32px; margin-bottom: 14px; display: block; }
+  .landing-card h3 { color: var(--white); font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+  .landing-card p { color: rgba(255,255,255,0.45); font-size: 12px; line-height: 1.5; }
+  .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); box-shadow: var(--shadow); padding: 24px; margin-bottom: 20px; }
+  .card-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--navy); margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+  .form-input, .form-select { width: 100%; border: 1px solid var(--gray-200); border-radius: 8px; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--gray-800); background: var(--white); transition: border-color 0.18s; outline: none; }
+  .form-input:focus, .form-select:focus { border-color: var(--navy-light); box-shadow: 0 0 0 3px rgba(42,74,138,0.1); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .required-star { color: var(--danger); margin-left: 2px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.18s; white-space: nowrap; }
+  .btn-primary { background: var(--navy); color: var(--white); }
+  .btn-primary:hover { background: var(--navy-light); }
+  .btn-gold { background: var(--gold); color: var(--navy); }
+  .btn-gold:hover { background: var(--gold-light); }
+  .btn-outline { background: transparent; border: 1px solid var(--gray-200); color: var(--gray-600); }
+  .btn-outline:hover { border-color: var(--navy-light); color: var(--navy); }
+  .btn-danger { background: #fef0ef; color: var(--danger); border: 1px solid #f5c6c2; }
+  .btn-danger:hover { background: #fddbd8; }
+  .btn-success { background: #e8f6ee; color: var(--success); border: 1px solid #a8d9bc; }
+  .btn-success:hover { background: #d0eddf; }
+  .btn-sm { padding: 7px 14px; font-size: 12px; }
+  .btn-lg { padding: 13px 28px; font-size: 15px; }
+  .btn-full { width: 100%; justify-content: center; }
+  .q-card { background: var(--gray-100); border: 1px solid var(--gray-200); border-radius: 10px; padding: 18px; margin-bottom: 14px; }
+  .q-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .q-num { background: var(--navy); color: var(--white); font-size: 11px; font-weight: 600; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .q-type-badge { font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 500; text-transform: uppercase; }
+  .q-type-multiple { background: #e3eaff; color: #2a4a8a; }
+  .q-type-truefalse { background: #e8f6ee; color: var(--success); }
+  .q-type-short { background: #fff3e0; color: #a05a00; }
+  .q-type-fill { background: #f3e8ff; color: #7c3aed; }
+  .option-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .option-radio { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; accent-color: var(--navy); }
+  .option-input { flex: 1; }
+  .tabs { display: flex; border-bottom: 2px solid var(--gray-200); margin-bottom: 24px; overflow-x: auto; }
+  .tab-btn { padding: 10px 20px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: var(--gray-400); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.18s; white-space: nowrap; }
+  .tab-btn.active { color: var(--navy); border-bottom-color: var(--navy); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+  .results-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .results-table th { background: var(--navy); color: var(--white); padding: 10px 14px; text-align: left; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .results-table td { padding: 10px 14px; border-bottom: 1px solid var(--gray-200); }
+  .results-table tr:last-child td { border-bottom: none; }
+  .results-table tr:hover td { background: var(--gray-100); }
+  .grade-pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .grade-a { background: #d4edda; color: #155724; }
+  .grade-b { background: #cce5ff; color: #004085; }
+  .grade-c { background: #fff3cd; color: #856404; }
+  .grade-d { background: #f8d7da; color: #721c24; }
+  #view-student { background: var(--cream); }
+  .student-content { max-width: 720px; margin: 0 auto; padding: 28px 20px; width: 100%; }
+  .reg-card { background: var(--white); border-radius: 14px; border: 1px solid var(--gray-200); box-shadow: var(--shadow); padding: 32px; margin-bottom: 20px; }
+  .reg-title { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--navy); margin-bottom: 6px; }
+  .reg-sub { color: var(--gray-400); font-size: 13px; margin-bottom: 28px; }
+  .camera-box { background: var(--gray-100); border: 2px dashed var(--gray-200); border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 220px; margin-bottom: 12px; }
+  .camera-box video, .camera-box img { width: 100%; max-height: 280px; object-fit: cover; display: block; }
+  .camera-placeholder { text-align: center; color: var(--gray-400); padding: 40px; }
+  .camera-placeholder .cam-icon { font-size: 40px; margin-bottom: 10px; }
+  .anticheat-banner { background: linear-gradient(90deg, #0f2044, #1a3260); color: var(--white); padding: 12px 20px; text-align: center; font-size: 12px; border-bottom: 2px solid var(--gold); }
+  .anticheat-banner span { color: var(--gold-light); font-weight: 500; }
+  .timer-display { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 16px; font-size: 22px; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: 2px; }
+  .timer-display.urgent { background: rgba(192,57,43,0.3); border-color: rgba(192,57,43,0.5); color: #ff8a80; }
+  .quiz-progress { height: 4px; background: var(--gray-200); border-radius: 2px; margin-bottom: 22px; overflow: hidden; }
+  .quiz-progress-bar { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.3s ease; }
+  .quiz-q-card { background: var(--white); border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(15,32,68,0.05); }
+  .quiz-q-num { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+  .quiz-q-text { font-size: 16px; font-weight: 500; color: var(--gray-800); margin-bottom: 18px; line-height: 1.5; }
+  .quiz-option { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1.5px solid var(--gray-200); border-radius: 8px; cursor: pointer; margin-bottom: 8px; transition: all 0.16s; font-size: 14px; }
+  .quiz-option:hover { border-color: var(--navy-light); background: rgba(42,74,138,0.04); }
+  .quiz-option.selected { border-color: var(--navy); background: rgba(15,32,68,0.06); }
+  .quiz-option input[type="radio"] { accent-color: var(--navy); }
+  .quiz-short-input { width: 100%; border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 12px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.16s; }
+  .quiz-short-input:focus { border-color: var(--navy); }
+  .result-circle { width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-family: 'DM Serif Display', serif; font-size: 36px; }
+  .result-circle.pass { background: #d4edda; color: var(--success); border: 3px solid #a8d9bc; }
+  .result-circle.fail { background: #f8d7da; color: var(--danger); border: 3px solid #f5c6c2; }
+  .result-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--navy); margin-bottom: 8px; }
+  .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+  .alert-warning { background: #fff8e1; border: 1px solid #ffe082; color: #7a5800; }
+  .alert-danger { background: #fef0ef; border: 1px solid #f5c6c2; color: var(--danger); }
+  .alert-success { background: #e8f6ee; border: 1px solid #a8d9bc; color: var(--success); }
+  .alert-info { background: #e3eaff; border: 1px solid #b3c2f0; color: #2a4a8a; }
+  #fs-overlay { display: none; position: fixed; inset: 0; background: rgba(15,32,68,0.97); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; text-align: center; color: white; padding: 40px; }
+  #fs-overlay.show { display: flex; }
+  .fs-icon { font-size: 60px; margin-bottom: 20px; }
+  .fs-title { font-family: 'DM Serif Display', serif; font-size: 28px; margin-bottom: 12px; color: var(--gold-light); }
+  .fs-msg { color: rgba(255,255,255,0.65); font-size: 15px; margin-bottom: 28px; }
+  .link-box { background: var(--navy); border-radius: 12px; padding: 20px; margin-top: 16px; }
+  .link-box-label { font-size: 11px; font-weight: 500; color: var(--gold-light); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .link-url { font-size: 11px; color: rgba(255,255,255,0.7); word-break: break-all; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-family: monospace; line-height: 1.6; }
+  .flex-between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .flex-gap { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .mt-12 { margin-top: 12px; }
+  .mb-20 { margin-bottom: 20px; }
+  .text-muted { color: var(--gray-400); font-size: 13px; }
+  .text-sm { font-size: 13px; }
+  .divider { border: none; border-top: 1px solid var(--gray-200); margin: 20px 0; }
+  .badge { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+  .badge-navy { background: rgba(15,32,68,0.1); color: var(--navy); }
+  .badge-gold { background: rgba(201,162,39,0.15); color: #8a6d00; }
+  .badge-green { background: #d4edda; color: var(--success); }
+  .badge-red { background: #f8d7da; color: var(--danger); }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--gray-400); }
+  .empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .table-wrap { overflow-x: auto; }
+  .photo-thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gray-200); }
+  @media (max-width: 600px) {
+    .main-content { padding: 18px 14px; }
+    .form-row, .settings-grid, .landing-cards { grid-template-columns: 1fr; }
+    .app-header { padding: 12px 16px; }
+    .brand-title { font-size: 14px; }
+    .landing-title { font-size: 26px; }
+    .reg-card { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="fs-overlay">
+  <div class="fs-icon">🚫</div>
+  <div class="fs-title">¡Atención!</div>
+  <div class="fs-msg">Saliste de la ventana del cuestionario.<br>Esto ha sido registrado.</div>
+  <button class="btn btn-gold btn-lg" onclick="returnToQuiz()">Volver al Cuestionario</button>
+</div>
+
+<!-- LANDING -->
+<div id="view-landing" class="view active">
+  <div class="landing-inner">
+    <div class="landing-logo">Universidad Salvadoreña Alberto Masferrer<br>Facultad de Medicina Veterinaria</div>
+    <h1 class="landing-title">Sistema de <em>Cuestionarios</em><br>en Línea</h1>
+    <p class="landing-sub">by Lic. Oscar González</p>
+    <div class="landing-cards">
+      <div class="landing-card" onclick="checkTeacherPassword()">
+        <span class="icon">🎓</span>
+        <h3>Panel del Docente</h3>
+        <p>Crear cuestionarios, compartir enlaces y ver resultados</p>
+      </div>
+      <div class="landing-card" onclick="showView('student-login')">
+        <span class="icon">📝</span>
+        <h3>Responder Cuestionario</h3>
+        <p>Usa el enlace directo que te compartió tu docente</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TEACHER -->
+<div id="view-teacher" class="view">
+  <div class="app-header">
+    <div class="brand">
+      <div class="brand-badge">USAM</div>
+      <div>
+        <div class="brand-title">Cuestionarios en Línea</div>
+        <div class="brand-sub">Panel Docente · by Lic. Oscar González</div>
+      </div>
+    </div>
+    <div class="flex-gap">
+      <span class="header-role-badge">Docente</span>
+      <button class="btn btn-outline btn-sm" onclick="showView('landing')">← Inicio</button>
+    </div>
+  </div>
+  <div class="main-content">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab(event,'tab-create')">📋 Crear Cuestionario</button>
+      <button class="tab-btn" onclick="switchTab(event,'tab-quizzes')">📦 Mis Cuestionarios</button>
+      <button class="tab-btn" onclick="switchTab(event,'tab-results')">📊 Resultados</button>
+    </div>
+
+    <div id="tab-create" class="tab-pane active">
+      <div class="card">
+        <div class="card-title">⚙️ Configuración</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre del Cuestionario <span class="required-star">*</span></label>
+            <input id="quiz-name" class="form-input" placeholder="Ej. Unidad 1 — Bacteriología General" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Descripción</label>
+            <input id="quiz-desc" class="form-input" placeholder="Descripción breve (opcional)" />
+          </div>
+        </div>
+        <div class="settings-grid">
+          <div class="form-group">
+            <label class="form-label">Tiempo Límite (minutos) <span class="required-star">*</span></label>
+            <input id="quiz-time" class="form-input" type="number" min="1" max="180" value="30" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mostrar nota al alumno al terminar</label>
+            <select id="quiz-show-grade" class="form-select">
+              <option value="yes">Sí — mostrar inmediatamente</option>
+              <option value="no">No — solo visible para docente</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="flex-between mb-20">
+          <div class="card-title" style="margin:0">❓ Preguntas</div>
+          <div class="flex-gap">
+            <select id="q-type-select" class="form-select" style="width:auto;font-size:12px;padding:7px 12px;">
+              <option value="multiple">Opción Múltiple</option>
+              <option value="truefalse">Verdadero / Falso</option>
+              <option value="short">Respuesta Corta</option>
+              <option value="fill">Completar el Espacio</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="addQuestion()">+ Agregar</button>
+          </div>
+        </div>
+        <div id="questions-container">
+          <div class="empty-state"><div class="empty-icon">📄</div><div>No hay preguntas aún.</div></div>
+        </div>
+      </div>
+      <div class="flex-gap" style="justify-content:flex-end">
+        <button class="btn btn-gold btn-lg" onclick="saveQuiz()">💾 Guardar y Generar Enlace</button>
+      </div>
+    </div>
+
+    <div id="tab-quizzes" class="tab-pane">
+      <div id="quizzes-list"><div class="empty-state"><div class="empty-icon">📦</div><div>No tienes cuestionarios guardados.</div></div></div>
+    </div>
+
+    <div id="tab-results" class="tab-pane">
+      <div class="card">
+        <div class="flex-between mb-20">
+          <div class="card-title" style="margin:0">📊 Resultados</div>
+          <div class="flex-gap">
+            <select id="results-quiz-filter" class="form-select" style="width:auto;font-size:12px;" onchange="renderResults()"><option value="">— Todos —</option></select>
+            <button class="btn btn-outline btn-sm" onclick="renderResults()" title="Actualizar">🔄 Actualizar</button>
+            <button class="btn btn-success btn-sm" onclick="exportXLSX()">⬇ Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="exportPDF()">⬇ PDF</button>
+          </div>
+        </div>
+        <div id="results-area"><div class="empty-state"><div class="empty-icon">📋</div><div>Aún no hay resultados.</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT LOGIN -->
+<div id="view-student-login" class="view">
+  <div class="app-header">
+    <div class="brand">
+      <div class="brand-badge">USAM</div>
+      <div>
+        <div class="brand-title" id="login-quiz-title">Cuestionario en Línea</div>
+        <div class="brand-sub">Ingreso de Alumno · by Lic. Oscar González</div>
+      </div>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="showView('landing')">← Inicio</button>
+  </div>
+  <div class="student-content">
+    <div class="reg-card">
+      <div class="reg-title" id="login-quiz-name-display">Datos del Estudiante</div>
+      <div class="reg-sub">Todos los campos son obligatorios para acceder al cuestionario.</div>
+      <div class="form-group">
+        <label class="form-label">Nombre Completo <span class="required-star">*</span></label>
+        <input id="s-name" class="form-input" placeholder="Nombre(s) y Apellido(s)" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Número de Carnet <span class="required-star">*</span></label>
+          <input id="s-carnet" class="form-input" placeholder="Ej. 2024-0001" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Correo Institucional <span class="required-star">*</span></label>
+          <input id="s-email" class="form-input" type="email" placeholder="carnet@usam.edu.sv" />
+        </div>
+      </div>
+      <hr class="divider">
+      <div class="form-label" style="margin-bottom:10px;">📷 Foto de Verificación <span class="required-star">*</span></div>
+      <div class="alert alert-info">Asegúrate de estar bien iluminado y de frente a la cámara.</div>
+      <div class="camera-box">
+        <div class="camera-placeholder" id="cam-placeholder"><div class="cam-icon">📷</div><div>Activa la cámara para tomar tu foto</div></div>
+        <video id="cam-video" style="display:none;" autoplay playsinline></video>
+        <canvas id="cam-canvas" style="display:none;"></canvas>
+        <img id="cam-preview" style="display:none;" alt="Foto" />
+      </div>
+      <div class="flex-gap">
+        <button class="btn btn-outline btn-sm" id="btn-start-cam" onclick="startCamera()">📷 Activar Cámara</button>
+        <button class="btn btn-primary btn-sm" id="btn-take-photo" onclick="takePhoto()" style="display:none">📸 Tomar Foto</button>
+        <button class="btn btn-outline btn-sm" id="btn-retake" onclick="retakePhoto()" style="display:none">🔄 Retomar</button>
+        <span id="photo-ok" class="badge badge-green" style="display:none">✓ Foto tomada</span>
+      </div>
+      <hr class="divider">
+      <div id="login-error" class="alert alert-danger" style="display:none"></div>
+      <button class="btn btn-gold btn-full btn-lg mt-12" onclick="startQuiz()">Comenzar Cuestionario →</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT QUIZ -->
+<div id="view-student" class="view">
+  <div class="anticheat-banner">🔒 Modo de Evaluación Activo — <span>Está prohibido cambiar de ventana.</span> Cualquier intento será registrado.</div>
+  <div class="app-header">
+    <div class="brand">
+      <div class="brand-badge">USAM</div>
+      <div>
+        <div class="brand-title" id="active-quiz-name">Cuestionario</div>
+        <div class="brand-sub" id="active-student-name">Estudiante</div>
+      </div>
+    </div>
+    <div class="timer-display" id="timer-display">00:00</div>
+  </div>
+  <div class="student-content"><div id="quiz-body"></div></div>
+</div>
+
+<!-- RESULT -->
+<div id="view-result" class="view">
+  <div class="app-header">
+    <div class="brand">
+      <div class="brand-badge">USAM</div>
+      <div><div class="brand-title">Resultado</div><div class="brand-sub">Cuestionario Completado</div></div>
+    </div>
+  </div>
+  <div class="student-content">
+    <div class="reg-card"><div id="result-content" style="text-align:center;padding:20px 0;"></div></div>
+  </div>
+</div>
+
+<!-- NO QUIZ -->
+<div id="view-noquiz" class="view">
+  <div class="app-header">
+    <div class="brand">
+      <div class="brand-badge">USAM</div>
+      <div><div class="brand-title">Cuestionarios en Línea</div><div class="brand-sub">by Lic. Oscar González</div></div>
+    </div>
+  </div>
+  <div class="student-content">
+    <div class="reg-card" style="text-align:center;padding:40px 20px;">
+      <div style="font-size:48px;margin-bottom:16px;">🔗</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--navy);margin-bottom:10px;">Enlace inválido</div>
+      <div style="color:var(--gray-400);font-size:14px;margin-bottom:24px;">Este enlace no contiene un cuestionario válido.<br>Pide a tu docente el enlace correcto.</div>
+      <button class="btn btn-gold" onclick="showView('landing')">← Ir al Inicio</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+let quizzes = JSON.parse(localStorage.getItem('usam_quizzes') || '[]');
+let results  = JSON.parse(localStorage.getItem('usam_results')  || '[]');
+let questions = [], currentQuiz = null, currentStudent = null;
+let studentAnswers = {}, timerInterval = null, timeLeft = 0;
+let photoDataUrl = null, cameraStream = null, blurCount = 0, quizActive = false;
+const BASE_URL = window.location.origin + window.location.pathname;
+
+
+
+const CLOUD_API = 'https://api.jsonbin.io/v3/b';
+const JKEY = '$2a$10$C2DJcKFtIYQMvrmMJ64oYuMnkdH6I9PRx3z3p..uVb5fzo9Be7xTK';
+// Registry bin: stores an ARRAY of individual result bin IDs (one per student submission)
+const REGISTRY_BIN = '69d949f636566621a89cf818';
+
+// ── Cloud helpers ────────────────────────────────────────────────────────────
+
+async function registryRead() {
+  try {
+    const r = await fetch(`${CLOUD_API}/${REGISTRY_BIN}/latest`, { headers: { 'X-Master-Key': JKEY } });
+    if (!r.ok) return [];
+    const d = await r.json();
+    return Array.isArray(d.record) ? d.record : [];
+  } catch(e) { return []; }
+}
+
+async function registryWrite(list) {
+  try {
+    await fetch(`${CLOUD_API}/${REGISTRY_BIN}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JKEY },
+      body: JSON.stringify(list)
+    });
+  } catch(e) {}
+}
+
+async function compressPhoto(dataUrl) {
+  try {
+    const img = new Image();
+    img.src = dataUrl;
+    await new Promise(res => { img.onload = res; img.onerror = res; });
+    const c = document.createElement('canvas');
+    const MAX = 80;
+    const ratio = Math.min(MAX/img.width, MAX/img.height, 1);
+    c.width = Math.round(img.width * ratio);
+    c.height = Math.round(img.height * ratio);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.5);
+  } catch(e) { return dataUrl; }
+}
+
+async function saveResultToCloud(result) {
+  const resultToSave = JSON.parse(JSON.stringify(result));
+  if (resultToSave.student.photo) {
+    resultToSave.student.photo = await compressPhoto(resultToSave.student.photo);
+  }
+
+  // Step 1: Create an individual bin for this student's result
+  let binId = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const cr = await fetch(CLOUD_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JKEY, 'X-Bin-Private': 'false', 'X-Bin-Name': 'USAM-Result' },
+        body: JSON.stringify(resultToSave)
+      });
+      if (cr.ok) { const cd = await cr.json(); binId = cd.metadata.id; break; }
+    } catch(e) {}
+    await new Promise(r => setTimeout(r, 1200));
+  }
+  if (!binId) { console.warn('Could not create result bin'); return false; }
+
+  // Step 2: Register the bin ID in the registry (with retries)
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await new Promise(r => setTimeout(r, Math.floor(Math.random() * 1500) + attempt * 600));
+    const list = await registryRead();
+    if (list.includes(binId)) return true;
+    list.push(binId);
+    await registryWrite(list);
+    await new Promise(r => setTimeout(r, 800));
+    const check = await registryRead();
+    if (check.includes(binId)) return true;
+  }
+  console.warn('Bin created but could not register it');
+  return false;
+}
+
+async function fetchAllResults() {
+  const list = await registryRead();
+  if (!list.length) return [];
+  const settled = await Promise.allSettled(
+    list.map(id =>
+      fetch(`${CLOUD_API}/${id}/latest`, { headers: { 'X-Master-Key': JKEY } })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => d?.record || null)
+        .catch(() => null)
+    )
+  );
+  return settled.map(s => s.value).filter(Boolean);
+}
+
+// Migration: fix quizzes that were saved without binId
+(function migrateQuizzes() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('usam_quizzes') || '[]');
+    const knownBins = {
+      '1775848609117': '69d94ca4aaba882197e60961',
+      '1775848775012': '69d94d50856a6821891dc9bb'
+    };
+    let changed = false;
+    stored.forEach(q => {
+      if (!q.binId && knownBins[String(q.id)]) {
+        q.binId = knownBins[String(q.id)];
+        const BASE = window.location.origin + window.location.pathname;
+        q.shareUrl = `${BASE}?q=${q.binId}`;
+        changed = true;
+      }
+    });
+    if (changed) localStorage.setItem('usam_quizzes', JSON.stringify(stored));
+    // Clean up old master bin ID — no longer used
+    localStorage.removeItem('usam_master_results_bin');
+  } catch(e) {}
+})();
+
+window.addEventListener('load', async () => {
+  const params = new URLSearchParams(window.location.search);
+  const binId = params.get('q');
+  if (!binId) return;
+  const loadingEl = document.createElement('div');
+  loadingEl.id = 'loading-screen';
+  loadingEl.style.cssText = 'position:fixed;inset:0;background:#0f2044;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:9999;';
+  loadingEl.innerHTML = '<div style="color:#c9a227;font-size:40px;">⏳</div><div style="color:#fff;font-family:serif;font-size:20px;">Cargando cuestionario...</div><div style="color:rgba(255,255,255,0.5);font-size:13px;">Por favor espera</div>';
+  document.body.appendChild(loadingEl);
+  try {
+    const res = await fetch(`${CLOUD_API}/${binId}/latest`, { headers: { 'X-Master-Key': JKEY } });
+    if (!res.ok) throw new Error('not found');
+    const d = await res.json(); currentQuiz = d.record;
+    document.getElementById('login-quiz-title').textContent = currentQuiz.name;
+    document.getElementById('login-quiz-name-display').textContent = currentQuiz.name;
+    document.body.removeChild(loadingEl);
+    showView('student-login');
+  } catch(e) {
+    document.body.removeChild(loadingEl);
+    showView('noquiz');
+  }
+});
+
+function checkTeacherPassword() {
+  const pwd = prompt('🔐 Ingresa la contraseña del docente:');
+  if (pwd === null) return;
+  if (pwd === 'profesor2026') showView('teacher');
+  else alert('❌ Contraseña incorrecta. Acceso denegado.');
+}
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const map = { landing:'view-landing', teacher:'view-teacher', 'student-login':'view-student-login', student:'view-student', result:'view-result', noquiz:'view-noquiz' };
+  const el = document.getElementById(map[name]);
+  if (el) el.classList.add('active');
+  if (name === 'teacher') { renderQuizzesList(); renderResults(); updateResultsFilter(); }
+}
+
+function switchTab(e, id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  e.target.classList.add('active');
+  if (id === 'tab-results') renderResults();
+  if (id === 'tab-quizzes') renderQuizzesList();
+}
+
+const typeLabels = { multiple:'Opción Múltiple', truefalse:'Verdadero / Falso', short:'Respuesta Corta', fill:'Completar el Espacio' };
+const typeBadge  = { multiple:'q-type-multiple', truefalse:'q-type-truefalse', short:'q-type-short', fill:'q-type-fill' };
+
+function addQuestion() {
+  const type = document.getElementById('q-type-select').value;
+  const q = { id: Date.now(), type, text: '', points: 1, options: [], correct: null };
+  if (type === 'multiple') q.options = ['','','',''];
+  if (type === 'truefalse') { q.options = ['Verdadero','Falso']; q.correct = 0; }
+  questions.push(q); renderQuestions();
+}
+
+function renderQuestions() {
+  const c = document.getElementById('questions-container');
+  if (!questions.length) { c.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div><div>No hay preguntas aún.</div></div>`; return; }
+  c.innerHTML = questions.map((q,i) => buildQCard(q,i)).join('');
+}
+
+function buildQCard(q, i) {
+  const badge = `<span class="q-type-badge ${typeBadge[q.type]}">${typeLabels[q.type]}</span>`;
+  let body = '';
+  if (q.type === 'multiple') {
+    body = `<div class="form-group"><label class="form-label">Pregunta</label><input class="form-input" placeholder="Escribe la pregunta..." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
+    <div class="form-label" style="margin-bottom:8px;">Opciones — selecciona la correcta</div>
+    ${q.options.map((opt,j)=>`<div class="option-row"><input type="radio" class="option-radio" name="c${q.id}" ${q.correct===j?'checked':''} onchange="questions[${i}].correct=${j}"/><input class="form-input option-input" placeholder="Opción ${j+1}" value="${esc(opt)}" oninput="questions[${i}].options[${j}]=this.value"/>${j>1?`<button class="btn btn-danger btn-sm" onclick="removeOption(${i},${j})">✕</button>`:''}</div>`).join('')}
+    <button class="btn btn-outline btn-sm mt-12" onclick="addOption(${i})">+ Agregar opción</button>`;
+  } else if (q.type === 'truefalse') {
+    body = `<div class="form-group"><label class="form-label">Proposición</label><input class="form-input" placeholder="Escribe la proposición..." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
+    <div class="form-label" style="margin-bottom:8px;">Respuesta correcta</div>
+    <div class="flex-gap"><label class="quiz-option" style="cursor:pointer;width:130px;padding:10px 14px;"><input type="radio" name="tf${q.id}" ${q.correct===0?'checked':''} onchange="questions[${i}].correct=0"/> Verdadero</label><label class="quiz-option" style="cursor:pointer;width:130px;padding:10px 14px;"><input type="radio" name="tf${q.id}" ${q.correct===1?'checked':''} onchange="questions[${i}].correct=1"/> Falso</label></div>`;
+  } else if (q.type === 'short') {
+    body = `<div class="form-group"><label class="form-label">Pregunta</label><input class="form-input" placeholder="Escribe la pregunta..." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
+    <div class="form-group"><label class="form-label">Respuesta esperada</label><input class="form-input" placeholder="Respuesta correcta..." value="${esc(q.correct||'')}" oninput="questions[${i}].correct=this.value"/></div>`;
+  } else if (q.type === 'fill') {
+    body = `<div class="form-group"><label class="form-label">Oración — usa ___ donde va la respuesta</label><input class="form-input" placeholder="Ej: La bacteria ___ causa tuberculosis." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
+    <div class="form-group"><label class="form-label">Respuesta correcta</label><input class="form-input" placeholder="Palabra o frase correcta..." value="${esc(q.correct||'')}" oninput="questions[${i}].correct=this.value"/></div>`;
+  }
+  return `<div class="q-card"><div class="q-card-header"><div class="flex-gap"><div class="q-num">${i+1}</div>${badge}</div><div class="flex-gap"><div style="display:flex;align-items:center;gap:8px;"><label class="form-label" style="margin:0;white-space:nowrap;">Pts:</label><input type="number" class="form-input" style="width:60px;padding:6px 8px;text-align:center;" min="1" max="100" value="${q.points}" oninput="questions[${i}].points=parseInt(this.value)||1"/></div><button class="btn btn-danger btn-sm" onclick="removeQuestion(${i})">🗑</button></div></div>${body}</div>`;
+}
+
+function addOption(qi) { questions[qi].options.push(''); renderQuestions(); }
+function removeOption(qi,oi) { questions[qi].options.splice(oi,1); if(questions[qi].correct>=questions[qi].options.length) questions[qi].correct=0; renderQuestions(); }
+function removeQuestion(i) { questions.splice(i,1); renderQuestions(); }
+function esc(s) { return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+// SAVE — uploads quiz to JSONBin cloud, generates short URL + QR
+async function saveQuiz() {
+  const name = document.getElementById('quiz-name').value.trim();
+  const time = parseInt(document.getElementById('quiz-time').value) || 30;
+  const showGrade = document.getElementById('quiz-show-grade').value;
+  const desc = document.getElementById('quiz-desc').value.trim();
+  if (!name) { alert('Por favor ingresa el nombre del cuestionario.'); return; }
+  if (!questions.length) { alert('Agrega al menos una pregunta.'); return; }
+  const valid = questions.every((q,i) => {
+    if (!q.text.trim()) { alert(`La pregunta ${i+1} está vacía.`); return false; }
+    if (q.type==='multiple') {
+      if (q.options.filter(o=>o.trim()).length<2) { alert(`Pregunta ${i+1}: agrega al menos 2 opciones.`); return false; }
+      if (q.correct===null||q.correct===undefined) { alert(`Pregunta ${i+1}: selecciona la respuesta correcta.`); return false; }
+    }
+    return true;
+  });
+  if (!valid) return;
+
+  const quiz = { id: Date.now(), name, desc, time, showGrade, questions: JSON.parse(JSON.stringify(questions)), created: new Date().toLocaleString('es-SV') };
+
+  // Show saving spinner
+  const saveBtn = document.querySelector('[onclick="saveQuiz()"]');
+  const origText = saveBtn.innerHTML;
+  saveBtn.innerHTML = '⏳ Guardando en la nube...';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await fetch(CLOUD_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JKEY, 'X-Bin-Private': 'false' },
+      body: JSON.stringify(quiz)
+    });
+    if (!res.ok) throw new Error('cloud error');
+    const data = await res.json();
+    const binId = data.metadata.id;
+    quiz.shareUrl = `${BASE_URL}?q=${binId}`;
+    quiz.binId = binId;
+    // Results stored in master bin - no per-quiz bin needed
+  } catch(e) {
+    saveBtn.innerHTML = origText;
+    saveBtn.disabled = false;
+    alert('❌ Error al guardar en la nube. Verifica tu conexión a internet e intenta de nuevo.');
+    return;
+  }
+
+  saveBtn.innerHTML = origText;
+  saveBtn.disabled = false;
+
+  quizzes.push(quiz);
+  localStorage.setItem('usam_quizzes', JSON.stringify(quizzes));
+
+  questions = [];
+  document.getElementById('quiz-name').value = '';
+  document.getElementById('quiz-desc').value = '';
+  document.getElementById('quiz-time').value = '30';
+  renderQuestions();
+
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-quizzes').classList.add('active');
+  document.querySelectorAll('.tab-btn')[1].classList.add('active');
+  renderQuizzesList();
+  setTimeout(() => { const el=document.getElementById(`ql-${quiz.id}`); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); }, 200);
+}
+
+function renderQuizzesList() {
+  const container = document.getElementById('quizzes-list');
+  if (!quizzes.length) { container.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><div>No tienes cuestionarios guardados.</div></div>`; return; }
+  container.innerHTML = quizzes.map(q => `
+    <div class="card" id="ql-${q.id}">
+      <div class="flex-between">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:500;font-size:16px;color:var(--navy);margin-bottom:4px;">${esc(q.name)}</div>
+          <div class="text-muted">${q.desc||'Sin descripción'}</div>
+          <div class="flex-gap mt-12" style="flex-wrap:wrap;">
+            <span class="badge badge-navy">⏱ ${q.time} min</span>
+            <span class="badge badge-gold">${q.questions.length} preguntas</span>
+            <span class="badge ${q.showGrade==='yes'?'badge-green':'badge-red'}">${q.showGrade==='yes'?'Nota visible':'Nota oculta'}</span>
+            <span class="text-muted text-sm">${q.created}</span>
+          </div>
+        </div>
+        <button class="btn btn-danger btn-sm" style="margin-left:12px;" onclick="deleteQuiz(${q.id})">🗑</button>
+      </div>
+      ${q.shareUrl ? `
+      <div class="link-box">
+        <div class="link-box-label">🔗 Enlace para compartir con alumnos</div>
+        <div class="link-url" id="url-${q.id}">${q.shareUrl}</div>
+        <div class="flex-gap">
+          <button class="btn btn-gold btn-sm" onclick="copyLink('url-${q.id}')">📋 Copiar enlace</button>
+          <button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.3);" onclick="toggleQR(${q.id}, '${q.shareUrl}')">📱 QR</button>
+        </div>
+        <div id="qr-box-${q.id}" style="display:none;margin-top:14px;text-align:center;"></div>
+      </div>` : ''}
+    </div>`).join('');
+}
+
+function copyLink(elId) {
+  const text = document.getElementById(elId).textContent.trim();
+  navigator.clipboard.writeText(text)
+    .then(() => alert('✅ Enlace copiado.\nCompartelo con tus alumnos por WhatsApp o correo electrónico.'))
+    .catch(() => prompt('Copia este enlace manualmente:', text));
+}
+
+function toggleQR(qid, url) {
+  const box = document.getElementById(`qr-box-${qid}`);
+  if (box.style.display === 'block') { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  if (box.innerHTML.trim()) return;
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'display:inline-block;background:#fff;padding:14px;border-radius:10px;';
+  box.appendChild(wrapper);
+  new QRCode(wrapper, { text: url, width: 200, height: 200, colorDark: '#0f2044', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  const lbl = document.createElement('div');
+  lbl.style.cssText = 'color:rgba(255,255,255,0.6);font-size:11px;margin-top:10px;';
+  lbl.textContent = 'Escanea con la cámara del celular';
+  box.appendChild(lbl);
+}
+
+function deleteQuiz(id) {
+  if (!confirm('¿Eliminar este cuestionario?')) return;
+  quizzes = quizzes.filter(q=>q.id!==id);
+  localStorage.setItem('usam_quizzes', JSON.stringify(quizzes));
+  renderQuizzesList();
+}
+
+// CAMERA
+async function startCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    const video = document.getElementById('cam-video');
+    video.srcObject = cameraStream; video.style.display = 'block';
+    document.getElementById('cam-placeholder').style.display = 'none';
+    document.getElementById('btn-start-cam').style.display = 'none';
+    document.getElementById('btn-take-photo').style.display = 'inline-flex';
+  } catch(e) { alert('No se pudo acceder a la cámara. Verifica los permisos del navegador.'); }
+}
+
+function takePhoto() {
+  const video = document.getElementById('cam-video');
+  const canvas = document.getElementById('cam-canvas');
+  canvas.width = video.videoWidth||320; canvas.height = video.videoHeight||240;
+  canvas.getContext('2d').drawImage(video,0,0);
+  photoDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  video.style.display = 'none';
+  const img = document.getElementById('cam-preview');
+  img.src = photoDataUrl; img.style.display = 'block';
+  document.getElementById('btn-take-photo').style.display = 'none';
+  document.getElementById('btn-retake').style.display = 'inline-flex';
+  document.getElementById('photo-ok').style.display = 'inline-block';
+  if (cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
+}
+
+function retakePhoto() {
+  photoDataUrl = null;
+  document.getElementById('cam-preview').style.display = 'none';
+  document.getElementById('btn-retake').style.display = 'none';
+  document.getElementById('photo-ok').style.display = 'none';
+  document.getElementById('btn-start-cam').style.display = 'inline-flex';
+}
+
+// START QUIZ
+function startQuiz() {
+  const name   = document.getElementById('s-name').value.trim();
+  const carnet = document.getElementById('s-carnet').value.trim();
+  const email  = document.getElementById('s-email').value.trim();
+  const errEl  = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if (!name||!carnet||!email) { errEl.textContent='Por favor completa todos los campos obligatorios.'; errEl.style.display='flex'; return; }
+  if (!email.toLowerCase().endsWith('@usam.edu.sv')) { errEl.textContent='El correo debe ser institucional (@usam.edu.sv).'; errEl.style.display='flex'; return; }
+  if (!photoDataUrl) { errEl.textContent='Debes tomar tu foto de verificación para continuar.'; errEl.style.display='flex'; return; }
+  if (!currentQuiz) { errEl.textContent='No hay cuestionario cargado. Usa el enlace directo que te compartió tu docente.'; errEl.style.display='flex'; return; }
+  currentStudent = { name, carnet, email, photo: photoDataUrl, startTime: new Date().toLocaleString('es-SV') };
+  studentAnswers = {}; blurCount = 0;
+  document.getElementById('active-quiz-name').textContent = currentQuiz.name;
+  document.getElementById('active-student-name').textContent = name;
+  renderStudentQuiz(); showView('student');
+  startTimer(currentQuiz.time * 60);
+  setupAntiCheat();
+}
+
+function renderStudentQuiz() {
+  const qs = currentQuiz.questions;
+  let html = `<div class="quiz-progress"><div class="quiz-progress-bar" style="width:0%" id="q-progress-bar"></div></div>`;
+  qs.forEach((q,i) => {
+    html += `<div class="quiz-q-card"><div class="quiz-q-num">Pregunta ${i+1} de ${qs.length} · ${q.points} punto${q.points!=1?'s':''}</div><div class="quiz-q-text">${renderFillText(q)}</div>${renderStudentQuestion(q,i)}</div>`;
+  });
+  html += `<button class="btn btn-gold btn-full btn-lg mt-12" onclick="submitQuiz()">✔ Enviar Cuestionario</button>`;
+  document.getElementById('quiz-body').innerHTML = html;
+  updateProgress();
+}
+
+function renderFillText(q) {
+  if (q.type==='fill') return esc(q.text).replace('___','<span style="border-bottom:2px solid var(--navy);display:inline-block;min-width:80px;margin:0 4px;">&nbsp;&nbsp;&nbsp;&nbsp;</span>');
+  return esc(q.text);
+}
+
+function renderStudentQuestion(q,i) {
+  if (q.type==='multiple') return q.options.map((opt,j)=>opt.trim()?`<label class="quiz-option" onclick="selectOption(${i},${j},this)"><input type="radio" name="q${i}" value="${j}" onchange="studentAnswers[${i}]=${j};updateProgress();"/> ${esc(opt)}</label>`:'').join('');
+  if (q.type==='truefalse') return `<label class="quiz-option" onclick="selectOption(${i},0,this)"><input type="radio" name="q${i}" value="0" onchange="studentAnswers[${i}]=0;updateProgress();"/> Verdadero</label><label class="quiz-option" onclick="selectOption(${i},1,this)"><input type="radio" name="q${i}" value="1" onchange="studentAnswers[${i}]=1;updateProgress();"/> Falso</label>`;
+  if (q.type==='short'||q.type==='fill') return `<input class="quiz-short-input" placeholder="Tu respuesta..." oninput="studentAnswers[${i}]=this.value;updateProgress();"/>`;
+  return '';
+}
+
+function selectOption(qi,val,el) {
+  studentAnswers[qi]=val;
+  el.closest('.quiz-q-card').querySelectorAll('.quiz-option').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected'); updateProgress();
+}
+
+function updateProgress() {
+  const total=currentQuiz.questions.length, answered=Object.keys(studentAnswers).length;
+  const bar=document.getElementById('q-progress-bar');
+  if(bar) bar.style.width=(total?answered/total*100:0).toFixed(0)+'%';
+}
+
+function startTimer(seconds) {
+  timeLeft=seconds; clearInterval(timerInterval); quizActive=true;
+  timerInterval=setInterval(()=>{ timeLeft--; updateTimerDisplay(); if(timeLeft<=0){clearInterval(timerInterval);submitQuiz(true);} },1000);
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  const m=Math.floor(timeLeft/60).toString().padStart(2,'0'), s=(timeLeft%60).toString().padStart(2,'0');
+  const el=document.getElementById('timer-display');
+  if(el){el.textContent=`${m}:${s}`;el.classList.toggle('urgent',timeLeft<=60);}
+}
+
+function setupAntiCheat() {
+  document.addEventListener('visibilitychange',onVisibilityChange);
+  window.addEventListener('blur',onWindowBlur);
+}
+function removeAntiCheat() {
+  document.removeEventListener('visibilitychange',onVisibilityChange);
+  window.removeEventListener('blur',onWindowBlur);
+}
+function onVisibilityChange(){if(document.hidden&&quizActive){blurCount++;showFsOverlay();}}
+function onWindowBlur(){if(quizActive){blurCount++;showFsOverlay();}}
+function showFsOverlay(){document.getElementById('fs-overlay').classList.add('show');}
+function returnToQuiz(){document.getElementById('fs-overlay').classList.remove('show');}
+
+async function submitQuiz(timeout=false) {
+  if(!timeout&&!confirm('¿Seguro que deseas enviar el cuestionario?')) return;
+  clearInterval(timerInterval); quizActive=false; removeAntiCheat();
+  document.getElementById('fs-overlay').classList.remove('show');
+  let totalPoints=0, earned=0;
+  const detail=currentQuiz.questions.map((q,i)=>{
+    totalPoints+=q.points;
+    const ans=studentAnswers[i];
+    let correct=false, ansText=ans===undefined?'(sin respuesta)':String(ans);
+    if(q.type==='multiple'||q.type==='truefalse'){correct=parseInt(ans)===parseInt(q.correct);ansText=q.options[ans]!==undefined?q.options[ans]:ansText;}
+    else if(q.type==='short'||q.type==='fill'){correct=(ans||'').trim().toLowerCase()===(q.correct||'').trim().toLowerCase();}
+    if(correct) earned+=q.points;
+    return {q:q.text,type:q.type,answer:ansText,correct,points:q.points,earnedPoints:correct?q.points:0};
+  });
+  const pct=totalPoints?Math.round(earned/totalPoints*100):0;
+  const result={id:Date.now(),quizId:currentQuiz.id,quizName:currentQuiz.name,student:currentStudent,answers:detail,earned,totalPoints,pct,blurCount,submitTime:new Date().toLocaleString('es-SV'),timedOut:timeout,showGrade:currentQuiz.showGrade};
+
+  // Show saving indicator
+  showResultScreen(result, true);
+
+  // Save result to cloud (each student gets their own bin — no collisions)
+  try {
+    await saveResultToCloud(result);
+  } catch(e) {
+    console.warn('Could not upload result to cloud:', e);
+  }
+
+  showResultScreen(result, false);
+}
+
+function showResultScreen(r, saving=false) {
+  showView('result');
+  if (saving) {
+    document.getElementById('result-content').innerHTML = `<div style="padding:40px 20px;text-align:center;"><div style="font-size:40px;margin-bottom:16px;">⏳</div><div style="font-family:serif;font-size:20px;color:var(--navy);margin-bottom:8px;">Enviando respuestas...</div><div style="color:var(--gray-400);font-size:13px;">Por favor espera un momento</div></div>`;
+    return;
+  }
+  const show=r.showGrade==='yes', pass=r.pct>=60;
+  let html=`<img src="${r.student.photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--gray-200);margin-bottom:16px;"/><div class="result-title">${esc(r.student.name)}</div><div style="color:var(--gray-400);font-size:13px;margin-bottom:24px;">${esc(r.quizName)} · ${r.submitTime}</div>`;
+  if(r.timedOut) html+=`<div class="alert alert-warning" style="justify-content:center;">⏱ El tiempo se agotó. Se entregó automáticamente.</div>`;
+  if(r.blurCount>0) html+=`<div class="alert alert-danger" style="justify-content:center;">⚠️ Se detectaron ${r.blurCount} cambio(s) de ventana.</div>`;
+  if(show){html+=`<div class="result-circle ${pass?'pass':'fail'}">${r.pct}%</div><div style="font-size:13px;color:var(--gray-400);margin-bottom:6px;">${r.earned}/${r.totalPoints} puntos</div><div class="badge ${pass?'badge-green':'badge-red'}" style="font-size:13px;padding:6px 16px;">${pass?'✓ Aprobado':'✗ Reprobado'}</div>`;}
+  else{html+=`<div class="result-circle" style="background:#fff3cd;border:3px solid #ffc107;color:#856404;">📋</div><div style="font-size:14px;color:var(--gray-600);margin-top:12px;">Tu cuestionario fue entregado correctamente.<br>El docente publicará tu nota próximamente.</div>`;}
+  document.getElementById('result-content').innerHTML=html;
+}
+
+function updateResultsFilter() {
+  const sel=document.getElementById('results-quiz-filter'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Todos —</option>';
+  quizzes.forEach(q=>sel.innerHTML+=`<option value="${q.id}" ${cur==q.id?'selected':''}>${esc(q.name)}</option>`);
+}
+
+async function renderResults() {
+  const area=document.getElementById('results-area'); if(!area) return;
+  updateResultsFilter();
+  const filter=document.getElementById('results-quiz-filter')?.value;
+  area.innerHTML=`<div class="empty-state"><div style="font-size:28px;margin-bottom:10px;">⏳</div><div>Cargando resultados...</div></div>`;
+
+  try {
+    results = await fetchAllResults();
+  } catch(e) {
+    console.warn('Could not fetch cloud results:', e);
+  }
+
+  const filtered = filter ? results.filter(r=>String(r.quizId)==String(filter)) : results;
+  if(!filtered.length){area.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><div>Aún no hay resultados.</div></div>`;return;}
+  const rows=filtered.map(r=>{const gc=r.pct>=90?'grade-a':r.pct>=75?'grade-b':r.pct>=60?'grade-c':'grade-d';return `<tr><td><img src="${r.student.photo}" class="photo-thumb"/></td><td>${esc(r.student.name)}</td><td>${esc(r.student.carnet)}</td><td>${esc(r.student.email)}</td><td>${esc(r.quizName)}</td><td>${r.submitTime}</td><td><span class="grade-pill ${gc}">${r.pct}%</span></td><td>${r.earned}/${r.totalPoints}</td><td>${r.blurCount>0?`<span style="color:var(--danger);">⚠️ ${r.blurCount}</span>`:'✓ 0'}</td></tr>`;}).join('');
+  area.innerHTML=`<div class="table-wrap"><table class="results-table"><thead><tr><th>Foto</th><th>Nombre</th><th>Carnet</th><th>Correo</th><th>Cuestionario</th><th>Fecha/Hora</th><th>Nota</th><th>Puntos</th><th>Cambios</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function exportXLSX() {
+  const filter=document.getElementById('results-quiz-filter')?.value;
+  const filtered=filter?results.filter(r=>r.quizId==filter):results;
+  if(!filtered.length){alert('No hay resultados para exportar.');return;}
+  const data=[['Nombre','Carnet','Correo','Cuestionario','Fecha/Hora','Nota (%)','Puntos Obtenidos','Puntos Totales','Cambios Ventana','Tiempo Agotado']];
+  filtered.forEach(r=>data.push([r.student.name,r.student.carnet,r.student.email,r.quizName,r.submitTime,r.pct,r.earned,r.totalPoints,r.blurCount,r.timedOut?'Sí':'No']));
+  const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[22,16,28,30,20,10,14,12,14,12].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws,'Resultados');
+  XLSX.writeFile(wb,`resultados_${Date.now()}.xlsx`);
+}
+
+function exportPDF() {
+  const filter=document.getElementById('results-quiz-filter')?.value;
+  const filtered=filter?results.filter(r=>r.quizId==filter):results;
+  if(!filtered.length){alert('No hay resultados para exportar.');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const margin=18; let y=20;
+  doc.setFillColor(15,32,68);doc.rect(0,0,210,28,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
+  doc.text('USAM — Sistema de Cuestionarios',margin,12);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(`Reporte de Resultados — ${new Date().toLocaleString('es-SV')}`,margin,20);
+  y=38;
+  filtered.forEach(r=>{
+    if(y>240){doc.addPage();y=20;}
+    doc.setDrawColor(220,220,215);doc.setFillColor(250,248,243);doc.roundedRect(margin,y,174,44,3,3,'FD');
+    try{if(r.student.photo)doc.addImage(r.student.photo,'JPEG',margin+3,y+3,22,22,undefined,'FAST');}catch(e){}
+    const tx=margin+28;
+    doc.setTextColor(15,32,68);doc.setFontSize(12);doc.setFont('helvetica','bold');doc.text(r.student.name,tx,y+10);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(90,87,80);
+    doc.text(`Carnet: ${r.student.carnet}   |   ${r.student.email}`,tx,y+17);
+    doc.text(`Cuestionario: ${r.quizName}`,tx,y+23);
+    doc.text(`Entregado: ${r.submitTime}   |   Cambios: ${r.blurCount}`,tx,y+29);
+    const gc=r.pct>=60?[26,122,74]:[192,57,43];
+    doc.setFillColor(...gc);doc.roundedRect(margin+138,y+6,30,16,3,3,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
+    doc.text(`${r.pct}%`,margin+153,y+17,{align:'center'});
+    doc.setFontSize(8);doc.text(`${r.earned}/${r.totalPoints} pts`,margin+153,y+22,{align:'center'});
+    y+=50;
+  });
+  doc.save(`resultados_${Date.now()}.pdf`);
+}
+</script>
+</body>
+</html>
