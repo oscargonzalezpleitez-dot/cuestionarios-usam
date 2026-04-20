@@ -7,7 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ihtal@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --navy: #0f2044; --navy-mid: #1a3260; --navy-light: #2a4a8a;
@@ -468,15 +468,20 @@ async function saveResultToCloud(result) {
 async function fetchAllResults() {
   const list = await registryRead();
   if (!list.length) return [];
-  const settled = await Promise.allSettled(
-    list.map(id =>
-      fetch(`${CLOUD_API}/${id}/latest`, { headers: { 'X-Master-Key': JKEY } })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => d?.record || null)
-        .catch(() => null)
-    )
-  );
-  return settled.map(s => s.value).filter(Boolean);
+  const results = [];
+  for (const id of list) {
+    try {
+      await new Promise(r => setTimeout(r, 300));
+      const r = await fetch(`${CLOUD_API}/${id}/latest`, { headers: { 'X-Master-Key': JKEY } });
+      if (r.ok) {
+        const d = await r.json();
+        if (d?.record) results.push(d.record);
+      }
+    } catch(e) {
+      console.warn('Could not fetch result bin:', id, e);
+    }
+  }
+  return results;
 }
 
 // Migration: fix quizzes that were saved without binId
