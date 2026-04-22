@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>USAM — Sistema de Cuestionarios en Línea</title>
+<title>USAM â Sistema de Cuestionarios en LÃ­nea</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -154,13 +154,28 @@
     .landing-title { font-size: 26px; }
     .reg-card { padding: 20px 16px; }
   }
+
+  /* ── Eliminación Selectiva de Resultados ──────────────────────────── */
+  #delete-mode-bar { display:none; align-items:center; gap:10px; background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 16px; margin-bottom:14px; flex-wrap:wrap; }
+  #delete-mode-bar.visible { display:flex; }
+  #delete-mode-bar .del-count { font-weight:600; color:#0f2044; flex:1; font-size:14px; }
+  .btn-del-confirm { background:#dc3545; color:white; border:none; border-radius:6px; padding:7px 16px; cursor:pointer; font-weight:600; font-size:13px; }
+  .btn-del-confirm:disabled { opacity:0.5; cursor:not-allowed; }
+  .btn-del-cancel { background:#6c757d; color:white; border:none; border-radius:6px; padding:7px 14px; cursor:pointer; font-size:13px; }
+  .btn-del-selall { background:#0f2044; color:white; border:none; border-radius:6px; padding:7px 14px; cursor:pointer; font-size:13px; }
+  #btn-toggle-delete { background:#fff3cd; color:#856404; border:1px solid #ffc107; border-radius:6px; padding:7px 14px; cursor:pointer; font-size:13px; font-weight:600; }
+  #btn-toggle-delete.active { background:#ffc107; color:#0f2044; }
+  .row-cb { width:16px; height:16px; cursor:pointer; accent-color:#dc3545; display:none; }
+  .delete-mode-on .row-cb { display:inline-block !important; }
+  tr.selected-for-delete { background:#fff5f5 !important; }
+  th.cb-col, td.cb-col { width:36px; text-align:center; padding:4px; vertical-align:middle; }
 </style>
 </head>
 <body>
 
 <div id="fs-overlay">
-  <div class="fs-icon">🚫</div>
-  <div class="fs-title">¡Atención!</div>
+  <div class="fs-icon">ð«</div>
+  <div class="fs-title">Â¡AtenciÃ³n!</div>
   <div class="fs-msg">Saliste de la ventana del cuestionario.<br>Esto ha sido registrado.</div>
   <button class="btn btn-gold btn-lg" onclick="returnToQuiz()">Volver al Cuestionario</button>
 </div>
@@ -168,19 +183,19 @@
 <!-- LANDING -->
 <div id="view-landing" class="view active">
   <div class="landing-inner">
-    <div class="landing-logo">Universidad Salvadoreña Alberto Masferrer<br>Facultad de Medicina Veterinaria</div>
-    <h1 class="landing-title">Sistema de <em>Cuestionarios</em><br>en Línea</h1>
-    <p class="landing-sub">by Lic. Oscar González</p>
+    <div class="landing-logo">Universidad SalvadoreÃ±a Alberto Masferrer<br>Facultad de Medicina Veterinaria</div>
+    <h1 class="landing-title">Sistema de <em>Cuestionarios</em><br>en LÃ­nea</h1>
+    <p class="landing-sub">by Lic. Oscar GonzÃ¡lez</p>
     <div class="landing-cards">
       <div class="landing-card" onclick="checkTeacherPassword()">
-        <span class="icon">🎓</span>
+        <span class="icon">ð</span>
         <h3>Panel del Docente</h3>
         <p>Crear cuestionarios, compartir enlaces y ver resultados</p>
       </div>
       <div class="landing-card" onclick="showView('student-login')">
-        <span class="icon">📝</span>
+        <span class="icon">ð</span>
         <h3>Responder Cuestionario</h3>
-        <p>Usa el enlace directo que te compartió tu docente</p>
+        <p>Usa el enlace directo que te compartiÃ³ tu docente</p>
       </div>
     </div>
   </div>
@@ -192,55 +207,55 @@
     <div class="brand">
       <div class="brand-badge">USAM</div>
       <div>
-        <div class="brand-title">Cuestionarios en Línea</div>
-        <div class="brand-sub">Panel Docente · by Lic. Oscar González</div>
+        <div class="brand-title">Cuestionarios en LÃ­nea</div>
+        <div class="brand-sub">Panel Docente Â· by Lic. Oscar GonzÃ¡lez</div>
       </div>
     </div>
     <div class="flex-gap">
       <span class="header-role-badge">Docente</span>
-      <button class="btn btn-outline btn-sm" onclick="showView('landing')">← Inicio</button>
+      <button class="btn btn-outline btn-sm" onclick="showView('landing')">â Inicio</button>
     </div>
   </div>
   <div class="main-content">
     <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab(event,'tab-create')">📋 Crear Cuestionario</button>
-      <button class="tab-btn" onclick="switchTab(event,'tab-quizzes')">📦 Mis Cuestionarios</button>
-      <button class="tab-btn" onclick="switchTab(event,'tab-results')">📊 Resultados</button>
+      <button class="tab-btn active" onclick="switchTab(event,'tab-create')">ð Crear Cuestionario</button>
+      <button class="tab-btn" onclick="switchTab(event,'tab-quizzes')">ð¦ Mis Cuestionarios</button>
+      <button class="tab-btn" onclick="switchTab(event,'tab-results')">ð Resultados</button>
     </div>
 
     <div id="tab-create" class="tab-pane active">
       <div class="card">
-        <div class="card-title">⚙️ Configuración</div>
+        <div class="card-title">âï¸ ConfiguraciÃ³n</div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Nombre del Cuestionario <span class="required-star">*</span></label>
-            <input id="quiz-name" class="form-input" placeholder="Ej. Unidad 1 — Bacteriología General" />
+            <input id="quiz-name" class="form-input" placeholder="Ej. Unidad 1 â BacteriologÃ­a General" />
           </div>
           <div class="form-group">
-            <label class="form-label">Descripción</label>
-            <input id="quiz-desc" class="form-input" placeholder="Descripción breve (opcional)" />
+            <label class="form-label">DescripciÃ³n</label>
+            <input id="quiz-desc" class="form-input" placeholder="DescripciÃ³n breve (opcional)" />
           </div>
         </div>
         <div class="settings-grid">
           <div class="form-group">
-            <label class="form-label">Tiempo Límite (minutos) <span class="required-star">*</span></label>
+            <label class="form-label">Tiempo LÃ­mite (minutos) <span class="required-star">*</span></label>
             <input id="quiz-time" class="form-input" type="number" min="1" max="180" value="30" />
           </div>
           <div class="form-group">
             <label class="form-label">Mostrar nota al alumno al terminar</label>
             <select id="quiz-show-grade" class="form-select">
-              <option value="yes">Sí — mostrar inmediatamente</option>
-              <option value="no">No — solo visible para docente</option>
+              <option value="yes">SÃ­ â mostrar inmediatamente</option>
+              <option value="no">No â solo visible para docente</option>
             </select>
           </div>
         </div>
       </div>
       <div class="card">
         <div class="flex-between mb-20">
-          <div class="card-title" style="margin:0">❓ Preguntas</div>
+          <div class="card-title" style="margin:0">â Preguntas</div>
           <div class="flex-gap">
             <select id="q-type-select" class="form-select" style="width:auto;font-size:12px;padding:7px 12px;">
-              <option value="multiple">Opción Múltiple</option>
+              <option value="multiple">OpciÃ³n MÃºltiple</option>
               <option value="truefalse">Verdadero / Falso</option>
               <option value="short">Respuesta Corta</option>
               <option value="fill">Completar el Espacio</option>
@@ -249,30 +264,36 @@
           </div>
         </div>
         <div id="questions-container">
-          <div class="empty-state"><div class="empty-icon">📄</div><div>No hay preguntas aún.</div></div>
+          <div class="empty-state"><div class="empty-icon">ð</div><div>No hay preguntas aÃºn.</div></div>
         </div>
       </div>
       <div class="flex-gap" style="justify-content:flex-end">
-        <button class="btn btn-gold btn-lg" onclick="saveQuiz()">💾 Guardar y Generar Enlace</button>
+        <button class="btn btn-gold btn-lg" onclick="saveQuiz()">ð¾ Guardar y Generar Enlace</button>
       </div>
     </div>
 
     <div id="tab-quizzes" class="tab-pane">
-      <div id="quizzes-list"><div class="empty-state"><div class="empty-icon">📦</div><div>No tienes cuestionarios guardados.</div></div></div>
+      <div id="quizzes-list"><div class="empty-state"><div class="empty-icon">ð¦</div><div>No tienes cuestionarios guardados.</div></div></div>
     </div>
 
     <div id="tab-results" class="tab-pane">
       <div class="card">
         <div class="flex-between mb-20">
-          <div class="card-title" style="margin:0">📊 Resultados</div>
+          <div class="card-title" style="margin:0">ð Resultados</div>
           <div class="flex-gap">
-            <select id="results-quiz-filter" class="form-select" style="width:auto;font-size:12px;" onchange="renderResults()"><option value="">— Todos —</option></select>
-            <button class="btn btn-outline btn-sm" onclick="renderResults()" title="Actualizar">🔄 Actualizar</button>
-            <button class="btn btn-success btn-sm" onclick="exportXLSX()">⬇ Excel</button>
-            <button class="btn btn-primary btn-sm" onclick="exportPDF()">⬇ PDF</button>
+            <select id="results-quiz-filter" class="form-select" style="width:auto;font-size:12px;" onchange="renderResults()"><option value="">â Todos â</option></select>
+            <button class="btn btn-outline btn-sm" onclick="renderResults()" title="Actualizar">ð Actualizar</button>
+            <button class="btn btn-success btn-sm" onclick="exportXLSX()">â¬ Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="exportPDF()">â¬ PDF</button>
           </div>
         </div>
-        <div id="results-area"><div class="empty-state"><div class="empty-icon">📋</div><div>Aún no hay resultados.</div></div></div>
+        <div id="delete-mode-bar">
+          <span class="del-count">0 resultado(s) seleccionado(s)</span>
+          <button class="btn-del-selall" onclick="selectAllResults()">✔ Seleccionar todos</button>
+          <button class="btn-del-confirm" id="btn-confirm-delete" disabled onclick="confirmDeleteResults()">🗑 Eliminar seleccionados</button>
+          <button class="btn-del-cancel" onclick="exitDeleteMode()">✕ Cancelar</button>
+        </div>
+        <div id="results-area"><div class="empty-state"><div class="empty-icon">ð</div><div>AÃºn no hay resultados.</div></div></div>
       </div>
     </div>
   </div>
@@ -284,11 +305,11 @@
     <div class="brand">
       <div class="brand-badge">USAM</div>
       <div>
-        <div class="brand-title" id="login-quiz-title">Cuestionario en Línea</div>
-        <div class="brand-sub">Ingreso de Alumno · by Lic. Oscar González</div>
+        <div class="brand-title" id="login-quiz-title">Cuestionario en LÃ­nea</div>
+        <div class="brand-sub">Ingreso de Alumno Â· by Lic. Oscar GonzÃ¡lez</div>
       </div>
     </div>
-    <button class="btn btn-outline btn-sm" onclick="showView('landing')">← Inicio</button>
+    <button class="btn btn-outline btn-sm" onclick="showView('landing')">â Inicio</button>
   </div>
   <div class="student-content">
     <div class="reg-card">
@@ -300,7 +321,7 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Número de Carnet <span class="required-star">*</span></label>
+          <label class="form-label">NÃºmero de Carnet <span class="required-star">*</span></label>
           <input id="s-carnet" class="form-input" placeholder="Ej. 2024-0001" />
         </div>
         <div class="form-group">
@@ -309,30 +330,30 @@
         </div>
       </div>
       <hr class="divider">
-      <div class="form-label" style="margin-bottom:10px;">📷 Foto de Verificación <span class="required-star">*</span></div>
-      <div class="alert alert-info">Asegúrate de estar bien iluminado y de frente a la cámara.</div>
+      <div class="form-label" style="margin-bottom:10px;">ð· Foto de VerificaciÃ³n <span class="required-star">*</span></div>
+      <div class="alert alert-info">AsegÃºrate de estar bien iluminado y de frente a la cÃ¡mara.</div>
       <div class="camera-box">
-        <div class="camera-placeholder" id="cam-placeholder"><div class="cam-icon">📷</div><div>Activa la cámara para tomar tu foto</div></div>
+        <div class="camera-placeholder" id="cam-placeholder"><div class="cam-icon">ð·</div><div>Activa la cÃ¡mara para tomar tu foto</div></div>
         <video id="cam-video" style="display:none;" autoplay playsinline></video>
         <canvas id="cam-canvas" style="display:none;"></canvas>
         <img id="cam-preview" style="display:none;" alt="Foto" />
       </div>
       <div class="flex-gap">
-        <button class="btn btn-outline btn-sm" id="btn-start-cam" onclick="startCamera()">📷 Activar Cámara</button>
-        <button class="btn btn-primary btn-sm" id="btn-take-photo" onclick="takePhoto()" style="display:none">📸 Tomar Foto</button>
-        <button class="btn btn-outline btn-sm" id="btn-retake" onclick="retakePhoto()" style="display:none">🔄 Retomar</button>
-        <span id="photo-ok" class="badge badge-green" style="display:none">✓ Foto tomada</span>
+        <button class="btn btn-outline btn-sm" id="btn-start-cam" onclick="startCamera()">ð· Activar CÃ¡mara</button>
+        <button class="btn btn-primary btn-sm" id="btn-take-photo" onclick="takePhoto()" style="display:none">ð¸ Tomar Foto</button>
+        <button class="btn btn-outline btn-sm" id="btn-retake" onclick="retakePhoto()" style="display:none">ð Retomar</button>
+        <span id="photo-ok" class="badge badge-green" style="display:none">â Foto tomada</span>
       </div>
       <hr class="divider">
       <div id="login-error" class="alert alert-danger" style="display:none"></div>
-      <button class="btn btn-gold btn-full btn-lg mt-12" onclick="startQuiz()">Comenzar Cuestionario →</button>
+      <button class="btn btn-gold btn-full btn-lg mt-12" onclick="startQuiz()">Comenzar Cuestionario â</button>
     </div>
   </div>
 </div>
 
 <!-- STUDENT QUIZ -->
 <div id="view-student" class="view">
-  <div class="anticheat-banner">🔒 Modo de Evaluación Activo — <span>Está prohibido cambiar de ventana.</span> Cualquier intento será registrado.</div>
+  <div class="anticheat-banner">ð Modo de EvaluaciÃ³n Activo â <span>EstÃ¡ prohibido cambiar de ventana.</span> Cualquier intento serÃ¡ registrado.</div>
   <div class="app-header">
     <div class="brand">
       <div class="brand-badge">USAM</div>
@@ -364,15 +385,15 @@
   <div class="app-header">
     <div class="brand">
       <div class="brand-badge">USAM</div>
-      <div><div class="brand-title">Cuestionarios en Línea</div><div class="brand-sub">by Lic. Oscar González</div></div>
+      <div><div class="brand-title">Cuestionarios en LÃ­nea</div><div class="brand-sub">by Lic. Oscar GonzÃ¡lez</div></div>
     </div>
   </div>
   <div class="student-content">
     <div class="reg-card" style="text-align:center;padding:40px 20px;">
-      <div style="font-size:48px;margin-bottom:16px;">🔗</div>
-      <div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--navy);margin-bottom:10px;">Enlace inválido</div>
-      <div style="color:var(--gray-400);font-size:14px;margin-bottom:24px;">Este enlace no contiene un cuestionario válido.<br>Pide a tu docente el enlace correcto.</div>
-      <button class="btn btn-gold" onclick="showView('landing')">← Ir al Inicio</button>
+      <div style="font-size:48px;margin-bottom:16px;">ð</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--navy);margin-bottom:10px;">Enlace invÃ¡lido</div>
+      <div style="color:var(--gray-400);font-size:14px;margin-bottom:24px;">Este enlace no contiene un cuestionario vÃ¡lido.<br>Pide a tu docente el enlace correcto.</div>
+      <button class="btn btn-gold" onclick="showView('landing')">â Ir al Inicio</button>
     </div>
   </div>
 </div>
@@ -393,7 +414,7 @@ const JKEY = '$2a$10$C2DJcKFtIYQMvrmMJ64oYuMnkdH6I9PRx3z3p..uVb5fzo9Be7xTK';
 // Registry bin: stores an ARRAY of individual result bin IDs (one per student submission)
 const REGISTRY_BIN = '69d949f636566621a89cf818';
 
-// ── Cloud helpers ────────────────────────────────────────────────────────────
+// ââ Cloud helpers ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 async function registryRead() {
   try {
@@ -475,7 +496,7 @@ async function fetchAllResults() {
       const r = await fetch(`${CLOUD_API}/${id}/latest`, { headers: { 'X-Master-Key': JKEY } });
       if (r.ok) {
         const d = await r.json();
-        if (d?.record) results.push(d.record);
+        if (d?.record) { d.record._binId = id; results.push(d.record); _resultBinIds.push(id); }
       }
     } catch(e) {
       console.warn('Could not fetch result bin:', id, e);
@@ -502,7 +523,7 @@ async function fetchAllResults() {
       }
     });
     if (changed) localStorage.setItem('usam_quizzes', JSON.stringify(stored));
-    // Clean up old master bin ID — no longer used
+    // Clean up old master bin ID â no longer used
     localStorage.removeItem('usam_master_results_bin');
   } catch(e) {}
 })();
@@ -514,7 +535,7 @@ window.addEventListener('load', async () => {
   const loadingEl = document.createElement('div');
   loadingEl.id = 'loading-screen';
   loadingEl.style.cssText = 'position:fixed;inset:0;background:#0f2044;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:9999;';
-  loadingEl.innerHTML = '<div style="color:#c9a227;font-size:40px;">⏳</div><div style="color:#fff;font-family:serif;font-size:20px;">Cargando cuestionario...</div><div style="color:rgba(255,255,255,0.5);font-size:13px;">Por favor espera</div>';
+  loadingEl.innerHTML = '<div style="color:#c9a227;font-size:40px;">â³</div><div style="color:#fff;font-family:serif;font-size:20px;">Cargando cuestionario...</div><div style="color:rgba(255,255,255,0.5);font-size:13px;">Por favor espera</div>';
   document.body.appendChild(loadingEl);
   try {
     const res = await fetch(`${CLOUD_API}/${binId}/latest`, { headers: { 'X-Master-Key': JKEY } });
@@ -531,10 +552,10 @@ window.addEventListener('load', async () => {
 });
 
 function checkTeacherPassword() {
-  const pwd = prompt('🔐 Ingresa la contraseña del docente:');
+  const pwd = prompt('ð Ingresa la contraseÃ±a del docente:');
   if (pwd === null) return;
   if (pwd === 'profesor2026') showView('teacher');
-  else alert('❌ Contraseña incorrecta. Acceso denegado.');
+  else alert('â ContraseÃ±a incorrecta. Acceso denegado.');
 }
 
 function showView(name) {
@@ -554,7 +575,7 @@ function switchTab(e, id) {
   if (id === 'tab-quizzes') renderQuizzesList();
 }
 
-const typeLabels = { multiple:'Opción Múltiple', truefalse:'Verdadero / Falso', short:'Respuesta Corta', fill:'Completar el Espacio' };
+const typeLabels = { multiple:'OpciÃ³n MÃºltiple', truefalse:'Verdadero / Falso', short:'Respuesta Corta', fill:'Completar el Espacio' };
 const typeBadge  = { multiple:'q-type-multiple', truefalse:'q-type-truefalse', short:'q-type-short', fill:'q-type-fill' };
 
 function addQuestion() {
@@ -567,7 +588,7 @@ function addQuestion() {
 
 function renderQuestions() {
   const c = document.getElementById('questions-container');
-  if (!questions.length) { c.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div><div>No hay preguntas aún.</div></div>`; return; }
+  if (!questions.length) { c.innerHTML = `<div class="empty-state"><div class="empty-icon">ð</div><div>No hay preguntas aÃºn.</div></div>`; return; }
   c.innerHTML = questions.map((q,i) => buildQCard(q,i)).join('');
 }
 
@@ -576,21 +597,21 @@ function buildQCard(q, i) {
   let body = '';
   if (q.type === 'multiple') {
     body = `<div class="form-group"><label class="form-label">Pregunta</label><input class="form-input" placeholder="Escribe la pregunta..." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
-    <div class="form-label" style="margin-bottom:8px;">Opciones — selecciona la correcta</div>
-    ${q.options.map((opt,j)=>`<div class="option-row"><input type="radio" class="option-radio" name="c${q.id}" ${q.correct===j?'checked':''} onchange="questions[${i}].correct=${j}"/><input class="form-input option-input" placeholder="Opción ${j+1}" value="${esc(opt)}" oninput="questions[${i}].options[${j}]=this.value"/>${j>1?`<button class="btn btn-danger btn-sm" onclick="removeOption(${i},${j})">✕</button>`:''}</div>`).join('')}
-    <button class="btn btn-outline btn-sm mt-12" onclick="addOption(${i})">+ Agregar opción</button>`;
+    <div class="form-label" style="margin-bottom:8px;">Opciones â selecciona la correcta</div>
+    ${q.options.map((opt,j)=>`<div class="option-row"><input type="radio" class="option-radio" name="c${q.id}" ${q.correct===j?'checked':''} onchange="questions[${i}].correct=${j}"/><input class="form-input option-input" placeholder="OpciÃ³n ${j+1}" value="${esc(opt)}" oninput="questions[${i}].options[${j}]=this.value"/>${j>1?`<button class="btn btn-danger btn-sm" onclick="removeOption(${i},${j})">â</button>`:''}</div>`).join('')}
+    <button class="btn btn-outline btn-sm mt-12" onclick="addOption(${i})">+ Agregar opciÃ³n</button>`;
   } else if (q.type === 'truefalse') {
-    body = `<div class="form-group"><label class="form-label">Proposición</label><input class="form-input" placeholder="Escribe la proposición..." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
+    body = `<div class="form-group"><label class="form-label">ProposiciÃ³n</label><input class="form-input" placeholder="Escribe la proposiciÃ³n..." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
     <div class="form-label" style="margin-bottom:8px;">Respuesta correcta</div>
     <div class="flex-gap"><label class="quiz-option" style="cursor:pointer;width:130px;padding:10px 14px;"><input type="radio" name="tf${q.id}" ${q.correct===0?'checked':''} onchange="questions[${i}].correct=0"/> Verdadero</label><label class="quiz-option" style="cursor:pointer;width:130px;padding:10px 14px;"><input type="radio" name="tf${q.id}" ${q.correct===1?'checked':''} onchange="questions[${i}].correct=1"/> Falso</label></div>`;
   } else if (q.type === 'short') {
     body = `<div class="form-group"><label class="form-label">Pregunta</label><input class="form-input" placeholder="Escribe la pregunta..." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
     <div class="form-group"><label class="form-label">Respuesta esperada</label><input class="form-input" placeholder="Respuesta correcta..." value="${esc(q.correct||'')}" oninput="questions[${i}].correct=this.value"/></div>`;
   } else if (q.type === 'fill') {
-    body = `<div class="form-group"><label class="form-label">Oración — usa ___ donde va la respuesta</label><input class="form-input" placeholder="Ej: La bacteria ___ causa tuberculosis." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
+    body = `<div class="form-group"><label class="form-label">OraciÃ³n â usa ___ donde va la respuesta</label><input class="form-input" placeholder="Ej: La bacteria ___ causa tuberculosis." value="${esc(q.text)}" oninput="questions[${i}].text=this.value"/></div>
     <div class="form-group"><label class="form-label">Respuesta correcta</label><input class="form-input" placeholder="Palabra o frase correcta..." value="${esc(q.correct||'')}" oninput="questions[${i}].correct=this.value"/></div>`;
   }
-  return `<div class="q-card"><div class="q-card-header"><div class="flex-gap"><div class="q-num">${i+1}</div>${badge}</div><div class="flex-gap"><div style="display:flex;align-items:center;gap:8px;"><label class="form-label" style="margin:0;white-space:nowrap;">Pts:</label><input type="number" class="form-input" style="width:60px;padding:6px 8px;text-align:center;" min="1" max="100" value="${q.points}" oninput="questions[${i}].points=parseInt(this.value)||1"/></div><button class="btn btn-danger btn-sm" onclick="removeQuestion(${i})">🗑</button></div></div>${body}</div>`;
+  return `<div class="q-card"><div class="q-card-header"><div class="flex-gap"><div class="q-num">${i+1}</div>${badge}</div><div class="flex-gap"><div style="display:flex;align-items:center;gap:8px;"><label class="form-label" style="margin:0;white-space:nowrap;">Pts:</label><input type="number" class="form-input" style="width:60px;padding:6px 8px;text-align:center;" min="1" max="100" value="${q.points}" oninput="questions[${i}].points=parseInt(this.value)||1"/></div><button class="btn btn-danger btn-sm" onclick="removeQuestion(${i})">ð</button></div></div>${body}</div>`;
 }
 
 function addOption(qi) { questions[qi].options.push(''); renderQuestions(); }
@@ -598,7 +619,7 @@ function removeOption(qi,oi) { questions[qi].options.splice(oi,1); if(questions[
 function removeQuestion(i) { questions.splice(i,1); renderQuestions(); }
 function esc(s) { return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
-// SAVE — uploads quiz to JSONBin cloud, generates short URL + QR
+// SAVE â uploads quiz to JSONBin cloud, generates short URL + QR
 async function saveQuiz() {
   const name = document.getElementById('quiz-name').value.trim();
   const time = parseInt(document.getElementById('quiz-time').value) || 30;
@@ -607,7 +628,7 @@ async function saveQuiz() {
   if (!name) { alert('Por favor ingresa el nombre del cuestionario.'); return; }
   if (!questions.length) { alert('Agrega al menos una pregunta.'); return; }
   const valid = questions.every((q,i) => {
-    if (!q.text.trim()) { alert(`La pregunta ${i+1} está vacía.`); return false; }
+    if (!q.text.trim()) { alert(`La pregunta ${i+1} estÃ¡ vacÃ­a.`); return false; }
     if (q.type==='multiple') {
       if (q.options.filter(o=>o.trim()).length<2) { alert(`Pregunta ${i+1}: agrega al menos 2 opciones.`); return false; }
       if (q.correct===null||q.correct===undefined) { alert(`Pregunta ${i+1}: selecciona la respuesta correcta.`); return false; }
@@ -621,7 +642,7 @@ async function saveQuiz() {
   // Show saving spinner
   const saveBtn = document.querySelector('[onclick="saveQuiz()"]');
   const origText = saveBtn.innerHTML;
-  saveBtn.innerHTML = '⏳ Guardando en la nube...';
+  saveBtn.innerHTML = 'â³ Guardando en la nube...';
   saveBtn.disabled = true;
 
   try {
@@ -639,7 +660,7 @@ async function saveQuiz() {
   } catch(e) {
     saveBtn.innerHTML = origText;
     saveBtn.disabled = false;
-    alert('❌ Error al guardar en la nube. Verifica tu conexión a internet e intenta de nuevo.');
+    alert('â Error al guardar en la nube. Verifica tu conexiÃ³n a internet e intenta de nuevo.');
     return;
   }
 
@@ -665,29 +686,29 @@ async function saveQuiz() {
 
 function renderQuizzesList() {
   const container = document.getElementById('quizzes-list');
-  if (!quizzes.length) { container.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><div>No tienes cuestionarios guardados.</div></div>`; return; }
+  if (!quizzes.length) { container.innerHTML = `<div class="empty-state"><div class="empty-icon">ð¦</div><div>No tienes cuestionarios guardados.</div></div>`; return; }
   container.innerHTML = quizzes.map(q => `
     <div class="card" id="ql-${q.id}">
       <div class="flex-between">
         <div style="flex:1;min-width:0;">
           <div style="font-weight:500;font-size:16px;color:var(--navy);margin-bottom:4px;">${esc(q.name)}</div>
-          <div class="text-muted">${q.desc||'Sin descripción'}</div>
+          <div class="text-muted">${q.desc||'Sin descripciÃ³n'}</div>
           <div class="flex-gap mt-12" style="flex-wrap:wrap;">
-            <span class="badge badge-navy">⏱ ${q.time} min</span>
+            <span class="badge badge-navy">â± ${q.time} min</span>
             <span class="badge badge-gold">${q.questions.length} preguntas</span>
             <span class="badge ${q.showGrade==='yes'?'badge-green':'badge-red'}">${q.showGrade==='yes'?'Nota visible':'Nota oculta'}</span>
             <span class="text-muted text-sm">${q.created}</span>
           </div>
         </div>
-        <button class="btn btn-danger btn-sm" style="margin-left:12px;" onclick="deleteQuiz(${q.id})">🗑</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:12px;" onclick="deleteQuiz(${q.id})">ð</button>
       </div>
       ${q.shareUrl ? `
       <div class="link-box">
-        <div class="link-box-label">🔗 Enlace para compartir con alumnos</div>
+        <div class="link-box-label">ð Enlace para compartir con alumnos</div>
         <div class="link-url" id="url-${q.id}">${q.shareUrl}</div>
         <div class="flex-gap">
-          <button class="btn btn-gold btn-sm" onclick="copyLink('url-${q.id}')">📋 Copiar enlace</button>
-          <button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.3);" onclick="toggleQR(${q.id}, '${q.shareUrl}')">📱 QR</button>
+          <button class="btn btn-gold btn-sm" onclick="copyLink('url-${q.id}')">ð Copiar enlace</button>
+          <button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.3);" onclick="toggleQR(${q.id}, '${q.shareUrl}')">ð± QR</button>
         </div>
         <div id="qr-box-${q.id}" style="display:none;margin-top:14px;text-align:center;"></div>
       </div>` : ''}
@@ -697,7 +718,7 @@ function renderQuizzesList() {
 function copyLink(elId) {
   const text = document.getElementById(elId).textContent.trim();
   navigator.clipboard.writeText(text)
-    .then(() => alert('✅ Enlace copiado.\nCompartelo con tus alumnos por WhatsApp o correo electrónico.'))
+    .then(() => alert('â Enlace copiado.\nCompartelo con tus alumnos por WhatsApp o correo electrÃ³nico.'))
     .catch(() => prompt('Copia este enlace manualmente:', text));
 }
 
@@ -712,12 +733,12 @@ function toggleQR(qid, url) {
   new QRCode(wrapper, { text: url, width: 200, height: 200, colorDark: '#0f2044', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
   const lbl = document.createElement('div');
   lbl.style.cssText = 'color:rgba(255,255,255,0.6);font-size:11px;margin-top:10px;';
-  lbl.textContent = 'Escanea con la cámara del celular';
+  lbl.textContent = 'Escanea con la cÃ¡mara del celular';
   box.appendChild(lbl);
 }
 
 function deleteQuiz(id) {
-  if (!confirm('¿Eliminar este cuestionario?')) return;
+  if (!confirm('Â¿Eliminar este cuestionario?')) return;
   quizzes = quizzes.filter(q=>q.id!==id);
   localStorage.setItem('usam_quizzes', JSON.stringify(quizzes));
   renderQuizzesList();
@@ -732,7 +753,7 @@ async function startCamera() {
     document.getElementById('cam-placeholder').style.display = 'none';
     document.getElementById('btn-start-cam').style.display = 'none';
     document.getElementById('btn-take-photo').style.display = 'inline-flex';
-  } catch(e) { alert('No se pudo acceder a la cámara. Verifica los permisos del navegador.'); }
+  } catch(e) { alert('No se pudo acceder a la cÃ¡mara. Verifica los permisos del navegador.'); }
 }
 
 function takePhoto() {
@@ -767,8 +788,8 @@ function startQuiz() {
   errEl.style.display = 'none';
   if (!name||!carnet||!email) { errEl.textContent='Por favor completa todos los campos obligatorios.'; errEl.style.display='flex'; return; }
   if (!email.toLowerCase().endsWith('@usam.edu.sv')) { errEl.textContent='El correo debe ser institucional (@usam.edu.sv).'; errEl.style.display='flex'; return; }
-  if (!photoDataUrl) { errEl.textContent='Debes tomar tu foto de verificación para continuar.'; errEl.style.display='flex'; return; }
-  if (!currentQuiz) { errEl.textContent='No hay cuestionario cargado. Usa el enlace directo que te compartió tu docente.'; errEl.style.display='flex'; return; }
+  if (!photoDataUrl) { errEl.textContent='Debes tomar tu foto de verificaciÃ³n para continuar.'; errEl.style.display='flex'; return; }
+  if (!currentQuiz) { errEl.textContent='No hay cuestionario cargado. Usa el enlace directo que te compartiÃ³ tu docente.'; errEl.style.display='flex'; return; }
   currentStudent = { name, carnet, email, photo: photoDataUrl, startTime: new Date().toLocaleString('es-SV') };
   studentAnswers = {}; blurCount = 0;
   document.getElementById('active-quiz-name').textContent = currentQuiz.name;
@@ -782,9 +803,9 @@ function renderStudentQuiz() {
   const qs = currentQuiz.questions;
   let html = `<div class="quiz-progress"><div class="quiz-progress-bar" style="width:0%" id="q-progress-bar"></div></div>`;
   qs.forEach((q,i) => {
-    html += `<div class="quiz-q-card"><div class="quiz-q-num">Pregunta ${i+1} de ${qs.length} · ${q.points} punto${q.points!=1?'s':''}</div><div class="quiz-q-text">${renderFillText(q)}</div>${renderStudentQuestion(q,i)}</div>`;
+    html += `<div class="quiz-q-card"><div class="quiz-q-num">Pregunta ${i+1} de ${qs.length} Â· ${q.points} punto${q.points!=1?'s':''}</div><div class="quiz-q-text">${renderFillText(q)}</div>${renderStudentQuestion(q,i)}</div>`;
   });
-  html += `<button class="btn btn-gold btn-full btn-lg mt-12" onclick="submitQuiz()">✔ Enviar Cuestionario</button>`;
+  html += `<button class="btn btn-gold btn-full btn-lg mt-12" onclick="submitQuiz()">â Enviar Cuestionario</button>`;
   document.getElementById('quiz-body').innerHTML = html;
   updateProgress();
 }
@@ -839,7 +860,7 @@ function showFsOverlay(){document.getElementById('fs-overlay').classList.add('sh
 function returnToQuiz(){document.getElementById('fs-overlay').classList.remove('show');}
 
 async function submitQuiz(timeout=false) {
-  if(!timeout&&!confirm('¿Seguro que deseas enviar el cuestionario?')) return;
+  if(!timeout&&!confirm('Â¿Seguro que deseas enviar el cuestionario?')) return;
   clearInterval(timerInterval); quizActive=false; removeAntiCheat();
   document.getElementById('fs-overlay').classList.remove('show');
   let totalPoints=0, earned=0;
@@ -858,7 +879,7 @@ async function submitQuiz(timeout=false) {
   // Show saving indicator
   showResultScreen(result, true);
 
-  // Save result to cloud (each student gets their own bin — no collisions)
+  // Save result to cloud (each student gets their own bin â no collisions)
   try {
     await saveResultToCloud(result);
   } catch(e) {
@@ -871,30 +892,31 @@ async function submitQuiz(timeout=false) {
 function showResultScreen(r, saving=false) {
   showView('result');
   if (saving) {
-    document.getElementById('result-content').innerHTML = `<div style="padding:40px 20px;text-align:center;"><div style="font-size:40px;margin-bottom:16px;">⏳</div><div style="font-family:serif;font-size:20px;color:var(--navy);margin-bottom:8px;">Enviando respuestas...</div><div style="color:var(--gray-400);font-size:13px;">Por favor espera un momento</div></div>`;
+    document.getElementById('result-content').innerHTML = `<div style="padding:40px 20px;text-align:center;"><div style="font-size:40px;margin-bottom:16px;">â³</div><div style="font-family:serif;font-size:20px;color:var(--navy);margin-bottom:8px;">Enviando respuestas...</div><div style="color:var(--gray-400);font-size:13px;">Por favor espera un momento</div></div>`;
     return;
   }
   const show=r.showGrade==='yes', pass=r.pct>=60;
-  let html=`<img src="${r.student.photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--gray-200);margin-bottom:16px;"/><div class="result-title">${esc(r.student.name)}</div><div style="color:var(--gray-400);font-size:13px;margin-bottom:24px;">${esc(r.quizName)} · ${r.submitTime}</div>`;
-  if(r.timedOut) html+=`<div class="alert alert-warning" style="justify-content:center;">⏱ El tiempo se agotó. Se entregó automáticamente.</div>`;
-  if(r.blurCount>0) html+=`<div class="alert alert-danger" style="justify-content:center;">⚠️ Se detectaron ${r.blurCount} cambio(s) de ventana.</div>`;
-  if(show){html+=`<div class="result-circle ${pass?'pass':'fail'}">${r.pct}%</div><div style="font-size:13px;color:var(--gray-400);margin-bottom:6px;">${r.earned}/${r.totalPoints} puntos</div><div class="badge ${pass?'badge-green':'badge-red'}" style="font-size:13px;padding:6px 16px;">${pass?'✓ Aprobado':'✗ Reprobado'}</div>`;}
-  else{html+=`<div class="result-circle" style="background:#fff3cd;border:3px solid #ffc107;color:#856404;">📋</div><div style="font-size:14px;color:var(--gray-600);margin-top:12px;">Tu cuestionario fue entregado correctamente.<br>El docente publicará tu nota próximamente.</div>`;}
+  let html=`<img src="${r.student.photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--gray-200);margin-bottom:16px;"/><div class="result-title">${esc(r.student.name)}</div><div style="color:var(--gray-400);font-size:13px;margin-bottom:24px;">${esc(r.quizName)} Â· ${r.submitTime}</div>`;
+  if(r.timedOut) html+=`<div class="alert alert-warning" style="justify-content:center;">â± El tiempo se agotÃ³. Se entregÃ³ automÃ¡ticamente.</div>`;
+  if(r.blurCount>0) html+=`<div class="alert alert-danger" style="justify-content:center;">â ï¸ Se detectaron ${r.blurCount} cambio(s) de ventana.</div>`;
+  if(show){html+=`<div class="result-circle ${pass?'pass':'fail'}">${r.pct}%</div><div style="font-size:13px;color:var(--gray-400);margin-bottom:6px;">${r.earned}/${r.totalPoints} puntos</div><div class="badge ${pass?'badge-green':'badge-red'}" style="font-size:13px;padding:6px 16px;">${pass?'â Aprobado':'â Reprobado'}</div>`;}
+  else{html+=`<div class="result-circle" style="background:#fff3cd;border:3px solid #ffc107;color:#856404;">ð</div><div style="font-size:14px;color:var(--gray-600);margin-top:12px;">Tu cuestionario fue entregado correctamente.<br>El docente publicarÃ¡ tu nota prÃ³ximamente.</div>`;}
   document.getElementById('result-content').innerHTML=html;
 }
 
 function updateResultsFilter() {
   const sel=document.getElementById('results-quiz-filter'); if(!sel) return;
   const cur=sel.value;
-  sel.innerHTML='<option value="">— Todos —</option>';
+  sel.innerHTML='<option value="">â Todos â</option>';
   quizzes.forEach(q=>sel.innerHTML+=`<option value="${q.id}" ${cur==q.id?'selected':''}>${esc(q.name)}</option>`);
 }
 
 async function renderResults() {
+  _resultBinIds = [];
   const area=document.getElementById('results-area'); if(!area) return;
   updateResultsFilter();
   const filter=document.getElementById('results-quiz-filter')?.value;
-  area.innerHTML=`<div class="empty-state"><div style="font-size:28px;margin-bottom:10px;">⏳</div><div>Cargando resultados...</div></div>`;
+  area.innerHTML=`<div class="empty-state"><div style="font-size:28px;margin-bottom:10px;">â³</div><div>Cargando resultados...</div></div>`;
 
   try {
     results = await fetchAllResults();
@@ -902,9 +924,11 @@ async function renderResults() {
     console.warn('Could not fetch cloud results:', e);
   }
 
+  setTimeout(_instrumentTable, 50);
+
   const filtered = filter ? results.filter(r=>String(r.quizId)==String(filter)) : results;
-  if(!filtered.length){area.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><div>Aún no hay resultados.</div></div>`;return;}
-  const rows=filtered.map(r=>{const gc=r.pct>=90?'grade-a':r.pct>=75?'grade-b':r.pct>=60?'grade-c':'grade-d';return `<tr><td><img src="${r.student.photo}" class="photo-thumb"/></td><td>${esc(r.student.name)}</td><td>${esc(r.student.carnet)}</td><td>${esc(r.student.email)}</td><td>${esc(r.quizName)}</td><td>${r.submitTime}</td><td><span class="grade-pill ${gc}">${r.pct}%</span></td><td>${r.earned}/${r.totalPoints}</td><td>${r.blurCount>0?`<span style="color:var(--danger);">⚠️ ${r.blurCount}</span>`:'✓ 0'}</td></tr>`;}).join('');
+  if(!filtered.length){area.innerHTML=`<div class="empty-state"><div class="empty-icon">ð</div><div>AÃºn no hay resultados.</div></div>`;return;}
+  const rows=filtered.map(r=>{const gc=r.pct>=90?'grade-a':r.pct>=75?'grade-b':r.pct>=60?'grade-c':'grade-d';return `<tr><td><img src="${r.student.photo}" class="photo-thumb"/></td><td>${esc(r.student.name)}</td><td>${esc(r.student.carnet)}</td><td>${esc(r.student.email)}</td><td>${esc(r.quizName)}</td><td>${r.submitTime}</td><td><span class="grade-pill ${gc}">${r.pct}%</span></td><td>${r.earned}/${r.totalPoints}</td><td>${r.blurCount>0?`<span style="color:var(--danger);">â ï¸ ${r.blurCount}</span>`:'â 0'}</td></tr>`;}).join('');
   area.innerHTML=`<div class="table-wrap"><table class="results-table"><thead><tr><th>Foto</th><th>Nombre</th><th>Carnet</th><th>Correo</th><th>Cuestionario</th><th>Fecha/Hora</th><th>Nota</th><th>Puntos</th><th>Cambios</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
@@ -913,7 +937,7 @@ function exportXLSX() {
   const filtered=filter?results.filter(r=>r.quizId==filter):results;
   if(!filtered.length){alert('No hay resultados para exportar.');return;}
   const data=[['Nombre','Carnet','Correo','Cuestionario','Fecha/Hora','Nota (%)','Puntos Obtenidos','Puntos Totales','Cambios Ventana','Tiempo Agotado']];
-  filtered.forEach(r=>data.push([r.student.name,r.student.carnet,r.student.email,r.quizName,r.submitTime,r.pct,r.earned,r.totalPoints,r.blurCount,r.timedOut?'Sí':'No']));
+  filtered.forEach(r=>data.push([r.student.name,r.student.carnet,r.student.email,r.quizName,r.submitTime,r.pct,r.earned,r.totalPoints,r.blurCount,r.timedOut?'SÃ­':'No']));
   const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[22,16,28,30,20,10,14,12,14,12].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws,'Resultados');
@@ -929,9 +953,9 @@ function exportPDF() {
   const margin=18; let y=20;
   doc.setFillColor(15,32,68);doc.rect(0,0,210,28,'F');
   doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
-  doc.text('USAM — Sistema de Cuestionarios',margin,12);
+  doc.text('USAM â Sistema de Cuestionarios',margin,12);
   doc.setFontSize(9);doc.setFont('helvetica','normal');
-  doc.text(`Reporte de Resultados — ${new Date().toLocaleString('es-SV')}`,margin,20);
+  doc.text(`Reporte de Resultados â ${new Date().toLocaleString('es-SV')}`,margin,20);
   y=38;
   filtered.forEach(r=>{
     if(y>240){doc.addPage();y=20;}
@@ -951,6 +975,159 @@ function exportPDF() {
     y+=50;
   });
   doc.save(`resultados_${Date.now()}.pdf`);
+}
+
+
+// ── Eliminación Selectiva de Resultados ──────────────────────────────────────
+
+let _deleteMode = false;
+let _selectedBinIds = new Set();
+let _resultBinIds = [];
+
+function toggleDeleteMode() {
+  if (_deleteMode) exitDeleteMode();
+  else enterDeleteMode();
+}
+
+function enterDeleteMode() {
+  _deleteMode = true;
+  const btn = document.getElementById('btn-toggle-delete');
+  if (btn) { btn.classList.add('active'); btn.textContent = '✕ Salir'; }
+  const bar = document.getElementById('delete-mode-bar');
+  if (bar) bar.classList.add('visible');
+  document.getElementById('tab-results')?.classList.add('delete-mode-on');
+  _selectedBinIds.clear();
+  _updateDeleteBar();
+  _instrumentTable();
+  document.querySelectorAll('.row-cb').forEach(cb => cb.style.display = 'inline-block');
+}
+
+function exitDeleteMode() {
+  _deleteMode = false;
+  const btn = document.getElementById('btn-toggle-delete');
+  if (btn) { btn.classList.remove('active'); btn.textContent = '🗑 Eliminar'; }
+  const bar = document.getElementById('delete-mode-bar');
+  if (bar) bar.classList.remove('visible');
+  document.getElementById('tab-results')?.classList.remove('delete-mode-on');
+  _selectedBinIds.clear();
+  document.querySelectorAll('.row-cb').forEach(cb => { cb.style.display = 'none'; cb.checked = false; });
+  document.querySelectorAll('tr.selected-for-delete').forEach(r => r.classList.remove('selected-for-delete'));
+  const hcb = document.getElementById('cb-select-all-table');
+  if (hcb) hcb.checked = false;
+}
+
+function _updateDeleteBar() {
+  const count = _selectedBinIds.size;
+  const countEl = document.querySelector('#delete-mode-bar .del-count');
+  if (countEl) countEl.textContent = count + ' resultado(s) seleccionado(s)';
+  const confirmBtn = document.getElementById('btn-confirm-delete');
+  if (confirmBtn) confirmBtn.disabled = count === 0;
+}
+
+function selectAllResults() {
+  const allCbs = document.querySelectorAll('.row-cb');
+  const allChecked = allCbs.length > 0 && [...allCbs].every(cb => cb.checked);
+  const selAllBtn = document.querySelector('.btn-del-selall');
+  if (allChecked) {
+    allCbs.forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('tr.selected-for-delete').forEach(r => r.classList.remove('selected-for-delete'));
+    _selectedBinIds.clear();
+    if (selAllBtn) selAllBtn.textContent = '✔ Seleccionar todos';
+    const hcb = document.getElementById('cb-select-all-table');
+    if (hcb) hcb.checked = false;
+  } else {
+    allCbs.forEach(cb => {
+      cb.checked = true;
+      const row = cb.closest('tr');
+      if (row) row.classList.add('selected-for-delete');
+      const binId = row?.dataset?.binId;
+      if (binId) _selectedBinIds.add(binId);
+    });
+    const hcb = document.getElementById('cb-select-all-table');
+    if (hcb) hcb.checked = true;
+    if (selAllBtn) selAllBtn.textContent = '✕ Deseleccionar todos';
+  }
+  _updateDeleteBar();
+}
+
+async function confirmDeleteResults() {
+  const toDelete = new Set(_selectedBinIds);
+  const count = toDelete.size;
+  if (!count) return;
+  if (!confirm('⚠️ ¿Eliminar ' + count + ' resultado(s) de forma permanente?\n\nEsta acción no se puede deshacer.')) return;
+
+  const btn = document.getElementById('btn-confirm-delete');
+  btn.disabled = true;
+  btn.textContent = '⏳ Eliminando...';
+
+  try {
+    const regUrl = CLOUD_API + '/' + REGISTRY_BIN;
+    const regResp = await fetch(regUrl + '/latest', { headers: { 'X-Master-Key': JKEY } });
+    if (!regResp.ok) throw new Error('Error leyendo registro: ' + regResp.status);
+    const regData = await regResp.json();
+    let list = Array.isArray(regData.record) ? regData.record : [];
+    const originalCount = list.length;
+    list = list.filter(id => !toDelete.has(id));
+
+    const writeResp = await fetch(regUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JKEY },
+      body: JSON.stringify(list)
+    });
+    if (!writeResp.ok) throw new Error('Error actualizando registro: ' + writeResp.status);
+
+    toDelete.forEach(binId => {
+      document.querySelectorAll('tr[data-bin-id="' + binId + '"]').forEach(row => row.remove());
+    });
+    _resultBinIds = _resultBinIds.filter(id => !toDelete.has(id));
+    results = results.filter(r => r._binId && !toDelete.has(r._binId));
+
+    alert('✅ ' + count + ' resultado(s) eliminado(s).\nRegistro: ' + originalCount + ' → ' + list.length + ' entradas.');
+    exitDeleteMode();
+    if (!document.querySelector('#results-area tbody tr')) {
+      document.getElementById('results-area').innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div>No hay resultados.</div></div>';
+    }
+  } catch(e) {
+    alert('❌ Error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '🗑 Eliminar seleccionados';
+  }
+}
+
+function _instrumentTable() {
+  const table = document.querySelector('#results-area table');
+  if (!table || table.dataset.instrumented) return;
+  table.dataset.instrumented = 'true';
+
+  const headerRow = table.querySelector('thead tr');
+  if (headerRow && !headerRow.querySelector('.cb-col')) {
+    const th = document.createElement('th');
+    th.className = 'cb-col';
+    th.innerHTML = '<input type="checkbox" id="cb-select-all-table" title="Sel. todos" style="width:16px;height:16px;cursor:pointer;accent-color:#dc3545;">';
+    headerRow.insertBefore(th, headerRow.firstChild);
+    document.getElementById('cb-select-all-table').addEventListener('change', selectAllResults);
+  }
+
+  const dataRows = table.querySelectorAll('tbody tr');
+  dataRows.forEach((row, i) => {
+    if (row.querySelector('.cb-col')) return;
+    const binId = _resultBinIds[i] || null;
+    if (binId) row.dataset.binId = binId;
+    const td = document.createElement('td');
+    td.className = 'cb-col';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'row-cb';
+    cb.title = binId ? 'Seleccionar para eliminar' : 'Sin ID (duplicado)';
+    cb.style.display = _deleteMode ? 'inline-block' : 'none';
+    cb.addEventListener('change', function() {
+      if (this.checked) { row.classList.add('selected-for-delete'); if (binId) _selectedBinIds.add(binId); }
+      else { row.classList.remove('selected-for-delete'); if (binId) _selectedBinIds.delete(binId); }
+      _updateDeleteBar();
+    });
+    td.appendChild(cb);
+    row.insertBefore(td, row.firstChild);
+  });
 }
 </script>
 </body>
