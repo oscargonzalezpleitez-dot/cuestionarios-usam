@@ -1,0 +1,45 @@
+{
+    "name": "USAM Cuestionarios",
+    "short_name": "USAM",
+    "description": "Sistema de Cuestionarios en Línea — Universidad Salvadoreña Alberto Masferrer · Facultad de Medicina Veterinaria. Panel del docente con notificaciones de respuestas en tiempo real.",
+    "start_url": "./admin.html",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0f2044",
+    "theme_color": "#0f2044",
+    "lang": "es-SV",
+    "dir": "ltr",
+    "categories": ["education", "productivity"],
+    "icons": [
+          {
+                  "src": "icon-192.png",
+                  "sizes": "192x192",
+                  "type": "image/png",
+                  "purpose": "any maskable"
+          },
+          {
+                  "src": "icon-512.png",
+                  "sizes": "512x512",
+                  "type": "image/png",
+                  "purpose": "any maskable"
+          }
+    ],
+    "shortcuts": [
+          {
+                  "name": "Panel del Docente",
+            "short_name": "Docente",
+                  "description": "Acceder al panel del docente",
+                  "url": "./admin.html",
+                  "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+          },
+          {
+                  "name": "Resultados",
+                  "short_name": "Resultados",
+                  "description": "Ver resultados recientes",
+                  "url": "./admin.html#results",
+                  "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+          }
+    ],
+    "prefer_related_applications": false
+}
