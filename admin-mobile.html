@@ -920,6 +920,41 @@ body {
       </div>
     </section>
 
+
+    <!-- ── VISTA: SINCRONIZAR ── -->
+    <section class="view" id="view-sync">
+      <p class="section-title">Sincronizar cuestionarios</p>
+
+      <!-- EXPORTAR -->
+      <div style="background:var(--white);border-radius:var(--radius);padding:1rem;margin-bottom:.85rem;box-shadow:var(--shadow-sm)">
+        <div style="font-weight:600;font-size:.95rem;color:var(--navy);margin-bottom:.4rem">📤 Exportar desde esta app</div>
+        <div style="font-size:.82rem;color:var(--g600);margin-bottom:.85rem">
+          Usa este botón en tu <strong>PC</strong> (donde creaste los cuestionarios) para descargar un archivo JSON con todos tus cuestionarios.
+        </div>
+        <button onclick="exportQuizzes()" style="width:100%;padding:.8rem;background:var(--navy);color:white;border:none;border-radius:var(--radius-sm);font-size:.9rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer">
+          Exportar cuestionarios (.json)
+        </button>
+      </div>
+
+      <!-- IMPORTAR -->
+      <div style="background:var(--white);border-radius:var(--radius);padding:1rem;margin-bottom:.85rem;box-shadow:var(--shadow-sm)">
+        <div style="font-weight:600;font-size:.95rem;color:var(--navy);margin-bottom:.4rem">📥 Importar en este dispositivo</div>
+        <div style="font-size:.82rem;color:var(--g600);margin-bottom:.85rem">
+          Usa este botón en tu <strong>teléfono</strong> para cargar el archivo JSON exportado desde la PC. Los cuestionarios quedarán disponibles aquí.
+        </div>
+        <label style="display:block;width:100%;padding:.8rem;background:var(--gold);color:var(--navy);border:none;border-radius:var(--radius-sm);font-size:.9rem;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;text-align:center">
+          Importar cuestionarios (.json)
+          <input type="file" accept=".json" onchange="importQuizzes(event)" style="display:none">
+        </label>
+      </div>
+
+      <!-- ESTADO -->
+      <div style="background:var(--white);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow-sm)">
+        <div style="font-weight:600;font-size:.9rem;color:var(--navy);margin-bottom:.75rem">📊 Estado actual</div>
+        <div id="sync-status" style="font-size:.82rem;color:var(--g600)">Cargando...</div>
+      </div>
+    </section>
+
   </div><!-- /content -->
 
   <!-- BOTTOM NAV -->
@@ -941,6 +976,10 @@ body {
     <button class="nav-btn" id="nav-quizzes" onclick="switchView('quizzes', this)">
       <span class="nav-icon">📝</span>
       <span>Tests</span>
+    </button>
+    <button class="nav-btn" id="nav-sync" onclick="switchView('sync', this)">
+      <span class="nav-icon">🔄</span>
+      <span>Sincronizar</span>
     </button>
   </nav>
 
@@ -1024,6 +1063,7 @@ async function initApp() {
   renderDashboard();
   renderResultsView();
   renderQuizzesView();
+  renderSyncStatus();
   startPolling();
   // Escuchar señales de alumnos activos via BroadcastChannel
   listenActiveStudents();
