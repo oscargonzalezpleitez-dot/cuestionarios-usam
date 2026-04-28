@@ -1,69 +1,44 @@
 {
-    "name": "USAM Cuestionarios",
-    "short_name": "USAM",
-    "description": "Sistema de Cuestionarios en Línea — Universidad Salvadoreña Alberto Masferrer. Panel del docente con notificaciones en tiempo real.",
-    "start_url": "./admin.html",
-    "scope": "./",
-    "display": "standalone",
-    "orientation": "portrait",
-    "background_color": "#0f2044",
-    "theme_color": "#0f2044",
-    "lang": "es-SV",
-    "dir": "ltr",
-    "categories": [
-        "education",
-        "productivity"
-    ],
-    "icons": [
-        {
-            "src": "icon.svg",
-            "sizes": "any",
-            "type": "image/svg+xml",
-            "purpose": "any"
-        },
-        {
-            "src": "icon.svg",
-            "sizes": "any",
-            "type": "image/svg+xml",
-            "purpose": "maskable"
-        },
-        {
-            "src": "icon-192.png",
-            "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "any maskable"
-        },
-        {
-            "src": "icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any maskable"
-        }
-    ],
-    "shortcuts": [
-        {
-            "name": "Panel del Docente",
-            "short_name": "Docente",
-            "description": "Acceder al panel del docente",
-            "url": "./admin.html",
-            "icons": [
-                {
-                    "src": "icon.svg",
-                    "sizes": "any"
-                }
-            ]
-        },
-        {
-            "name": "Resultados",
-            "short_name": "Resultados",
-            "description": "Ver resultados recientes",
-            "url": "./admin.html#results",
-            "icons": [
-                {
-                    "src": "icon.svg",
-                    "sizes": "any"
-                }
-            ]
-        }
-    ]
+  "name": "USAM Cuestionarios",
+  "short_name": "Cuestionarios",
+  "description": "Panel docente para cuestionarios en línea — USAM Veterinaria",
+  "start_url": "/cuestionarios-usam/admin-mobile.html",
+  "scope": "/cuestionarios-usam/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f2044",
+  "theme_color": "#0f2044",
+  "lang": "es-SV",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ver Resultados",
+      "short_name": "Resultados",
+      "description": "Ir directo a los últimos resultados",
+      "url": "/cuestionarios-usam/admin-mobile.html#resultados",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Nuevo Cuestionario",
+      "short_name": "Nuevo",
+      "description": "Crear un nuevo cuestionario",
+      "url": "/cuestionarios-usam/?docente=1",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "screenshots": []
 }
