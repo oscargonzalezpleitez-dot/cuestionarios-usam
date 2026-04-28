@@ -1093,5 +1093,103 @@ function _instrumentTable() {
   });
 }
 </script>
+
+<!-- ══ PWA: Service Worker + Notificaciones + Polling ══ -->
+<script>
+// ── Registro del Service Worker ──────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(reg => console.log('[SW] Registrado:', reg.scope))
+      .catch(err => console.warn('[SW] Error:', err));
+  });
+}
+
+// ── Polling en background (badge de no leídos) ───────────────
+(function startBgPolling() {
+  const CLOUD_API    = 'https://api.jsonbin.io/v3/b';
+  const JKEY         = '$2a$10$C2DJcKFtIYQMvrmMJ64oYuMnkdH6I9PRx3z3p..uVb5fzo9Be7xTK';
+  const REGISTRY_BIN = '69d949f636566621a89cf818';
+  const POLL_MS      = 30000;
+  let lastKnownCount = parseInt(localStorage.getItem('usam_lastCount') || '0', 10);
+  let unread         = parseInt(localStorage.getItem('usam_unread') || '0', 10);
+
+  // Solicitar permiso de notificaciones
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  async function poll() {
+    try {
+      const r = await fetch(CLOUD_API + '/' + REGISTRY_BIN + '/latest', {
+        headers: {'X-Master-Key': JKEY}
+      });
+      if (!r.ok) return;
+      const d = await r.json();
+      const list = Array.isArray(d.record) ? d.record : [];
+      const count = list.length;
+
+      if (count > lastKnownCount) {
+        const diff = count - lastKnownCount;
+        unread += diff;
+        localStorage.setItem('usam_unread', String(unread));
+        localStorage.setItem('usam_lastCount', String(count));
+        lastKnownCount = count;
+
+        // Notificación nativa
+        if (Notification.permission === 'granted') {
+          new Notification('\uD83D\uDCDD USAM — Nuevo envío', {
+            body: diff + ' nuevo' + (diff > 1 ? 's resultados recibidos' : ' resultado recibido'),
+            icon: 'icons/icon-192.png',
+            badge: 'icons/icon-72.png',
+            tag: 'usam-new-result',
+            renotify: true
+          });
+        }
+
+        // Vibración (móvil)
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+        // Sonido
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.frequency.value = 880;
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.4);
+        } catch(e) {}
+
+        // Badge en el título
+        updateTitleBadge(unread);
+      }
+    } catch(e) {}
+  }
+
+  function updateTitleBadge(n) {
+    const base = 'USAM \u2014 Sistema de Cuestionarios en L\u00EDnea';
+    document.title = n > 0 ? '(' + n + ') ' + base : base;
+  }
+
+  // Iniciar polling
+  poll();
+  setInterval(poll, POLL_MS);
+
+  // Limpiar badge cuando la página del admin esté activa
+  window.addEventListener('focus', () => {
+    if (window.location.pathname.includes('admin')) {
+      unread = 0;
+      localStorage.setItem('usam_unread', '0');
+      updateTitleBadge(0);
+    }
+  });
+
+  // Restaurar badge al cargar
+  if (unread > 0) updateTitleBadge(unread);
+})();
+</script>
 </body>
 </html>
