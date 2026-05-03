@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Asistencia QR · USAM</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📋%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase v10 modular -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, push, set, onValue, off, remove, serverTimestamp, onDisconnect, get, child } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  window.firebaseLib = { initializeApp, getDatabase, ref, push, set, onValue, off, remove, serverTimestamp, onDisconnect, get, child };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<!-- QRCode.js para generar códigos QR -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- jsPDF para exportar PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- SheetJS para exportar Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root {
+  --bg:#05070d;
+  --bg-2:#0a0e1a;
+  --surface:#0f1424;
+  --card:#131a2e;
+  --card-hi:#1a2340;
+  --border:#1f2a47;
+  --border-hi:#2a3960;
+  --accent:#6ee7ff;
+  --accent-2:#a78bfa;
+  --accent-3:#34d399;
+  --warn:#fbbf24;
+  --red:#fb7185;
+  --text:#e8edf7;
+  --text-dim:#a3b0cc;
+  --muted:#5b6886;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Manrope',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-feature-settings:"ss01","cv11";
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 15% 0%, rgba(110,231,255,.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 95% 100%, rgba(167,139,250,.08) 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background-attachment:fixed;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(110,231,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110,231,255,.025) 1px, transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse 60% 50% at 50% 30%, #000 30%, transparent 80%);
+}
+
+/* ─── NAV ─── */
+.nav{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 22px;
+  background:rgba(5,7,13,.82);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-mark{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);
+  display:grid;place-items:center;color:#05070d;font-weight:800;font-size:14px;
+  box-shadow:0 4px 18px rgba(110,231,255,.25);
+}
+.nav-title{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase}
+.nav-title b{color:var(--accent);font-weight:700}
+.nav-tabs{display:flex;gap:4px;background:rgba(255,255,255,.03);padding:4px;border-radius:10px;border:1px solid var(--border)}
+.tab-btn{
+  padding:7px 16px;border-radius:7px;border:none;
+  font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.3px;
+  cursor:pointer;background:transparent;color:var(--muted);transition:all .2s;
+}
+.tab-btn.active{background:rgba(110,231,255,.12);color:var(--accent);box-shadow:0 0 0 1px rgba(110,231,255,.25) inset}
+.tab-btn:hover:not(.active){color:var(--text);background:rgba(255,255,255,.04)}
+
+.pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:10px;letter-spacing:2px;
+  padding:5px 12px;border-radius:20px;
+  background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.22);color:var(--accent-3);
+}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:var(--accent-3);animation:pulse 1.6s infinite}
+.pill.off{background:rgba(91,104,134,.1);border-color:var(--border);color:var(--muted)}
+.pill.off .dot{background:var(--muted);animation:none}
+.pill.warn{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:var(--warn)}
+.pill.warn .dot{background:var(--warn)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ─── VIEWS ─── */
+.view{display:none;padding:28px 20px 60px;max-width:920px;margin:0 auto;position:relative;z-index:1}
+.view.active{display:block;animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.card{
+  background:linear-gradient(180deg,var(--card) 0%, var(--surface) 100%);
+  border:1px solid var(--border);border-radius:18px;
+  padding:24px;margin-bottom:20px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(110,231,255,.45),transparent);
+}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.card-title{
+  font-family:var(--mono);font-size:10px;letter-spacing:3px;
+  color:var(--text-dim);text-transform:uppercase;font-weight:600;
+}
+.card-title::before{content:'▸ ';color:var(--accent)}
+
+.fields-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.field label{
+  display:block;font-family:var(--mono);font-size:9px;letter-spacing:2px;
+  color:var(--muted);text-transform:uppercase;margin-bottom:6px;font-weight:600;
+}
+.field input, .field select, .field textarea{
+  width:100%;background:var(--bg-2);border:1px solid var(--border);
+  color:var(--text);font-family:var(--sans);font-size:14px;
+  padding:11px 13px;border-radius:9px;outline:none;transition:all .2s;
+}
+/* En el modal de Firebase, fuente mono para distinguir I de l, 0 de O */
+#configModal .field input, #configModal .field textarea{
+  font-family:var(--mono);font-size:13px;letter-spacing:.3px;
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px rgba(110,231,255,.1);
+}
+.field textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
+
+.dur-group{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.dur-btn{
+  padding:9px 18px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);
+  font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.5px;
+  cursor:pointer;transition:all .15s;
+}
+.dur-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(110,231,255,.08)}
+.dur-btn:hover:not(.active){border-color:var(--border-hi);color:var(--text)}
+
+.toggle-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px}
+.toggle-row label{flex:1;font-size:13px;color:var(--text-dim);cursor:pointer}
+.toggle-row label small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.switch{position:relative;width:40px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch .slider{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:22px;transition:.2s}
+.switch .slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked + .slider{background:var(--accent)}
+.switch input:checked + .slider::before{transform:translateX(18px);background:#05070d}
+
+/* ─── QR ZONE ─── */
+.qr-zone{display:flex;gap:32px;align-items:center;flex-wrap:wrap;justify-content:center;padding:8px}
+.qr-frame{
+  position:relative;background:#fff;padding:18px;border-radius:16px;
+  box-shadow:0 0 0 1px rgba(110,231,255,.25), 0 12px 50px rgba(110,231,255,.12);
+  transition:box-shadow .4s;
+}
+.qr-frame.warn-glow{animation:pulsewarn .8s ease-in-out infinite alternate}
+@keyframes pulsewarn{
+  from{box-shadow:0 0 0 1px rgba(251,191,36,.35), 0 0 28px rgba(251,191,36,.18)}
+  to  {box-shadow:0 0 0 1px rgba(251,191,36,.75), 0 0 60px rgba(251,191,36,.4)}
+}
+.qr-paused{
+  position:absolute;inset:0;background:rgba(5,7,13,.92);border-radius:16px;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+}
+.qr-paused.show{display:flex}
+.qr-paused .ico{font-size:36px}
+.qr-paused span{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px}
+#qrCanvas{display:block;border-radius:6px}
+
+.ring-wrap{position:relative;width:96px;height:96px}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--border);stroke-width:5}
+.ring-fg{fill:none;stroke:var(--accent);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s linear, stroke .4s}
+.ring-fg.warn{stroke:var(--warn)}
+.ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:17px;font-weight:700;color:var(--accent);transition:color .4s}
+.ring-num.warn{color:var(--warn)}
+
+.meta-right{display:flex;flex-direction:column;gap:14px;align-items:center}
+.status-lbl{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase}
+.token-box{text-align:center}
+.token-lbl{font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.token-val{
+  font-family:var(--mono);font-size:24px;font-weight:700;letter-spacing:6px;
+  color:var(--accent);padding:10px 20px;
+  background:rgba(110,231,255,.05);border:1px solid rgba(110,231,255,.2);border-radius:10px;
+}
+
+/* ─── BUTTONS ─── */
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.btn{
+  flex:1;min-width:120px;padding:12px 18px;border-radius:10px;border:none;
+  font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;
+  transition:all .18s;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-primary{background:linear-gradient(135deg,var(--accent-2) 0%,var(--accent) 100%);color:#05070d;box-shadow:0 4px 16px rgba(110,231,255,.2)}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 22px rgba(110,231,255,.3)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:rgba(110,231,255,.05)}
+.btn-danger{background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.3);color:var(--red)}
+.btn-danger:hover:not(:disabled){background:rgba(251,113,133,.16)}
+.btn-warn{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:var(--warn)}
+.btn-warn:hover:not(:disabled){background:rgba(251,191,36,.16)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+
+.hint-bar{
+  background:rgba(167,139,250,.06);border-left:3px solid var(--accent-2);
+  padding:12px 16px;border-radius:0 10px 10px 0;
+  font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:18px;
+}
+.hint-bar strong{color:var(--text)}
+.hint-bar code{background:rgba(255,255,255,.05);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--accent)}
+
+/* ─── STATS ─── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--bg-2);border:1px solid var(--border);border-radius:12px;padding:14px}
+.stat-lbl{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.stat-val{font-size:24px;font-weight:800;color:var(--text);font-family:var(--mono)}
+.stat-val.acc{color:var(--accent)}
+.stat-val.green{color:var(--accent-3)}
+.stat-val.warn{color:var(--warn)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* ─── LOG ─── */
+.log-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.search-input{
+  flex:1;min-width:160px;background:var(--bg-2);border:1px solid var(--border);
+  color:var(--text);font-family:var(--sans);font-size:13px;
+  padding:9px 12px;border-radius:8px;outline:none;
+}
+.search-input:focus{border-color:var(--accent)}
+.export-btn{
+  padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-dim);
+  font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;letter-spacing:1px;transition:all .15s;
+}
+.export-btn:hover{border-color:var(--accent-3);color:var(--accent-3);background:rgba(52,211,153,.06)}
+.export-btn.pdf:hover{border-color:var(--red);color:var(--red);background:rgba(251,113,133,.06)}
+.export-btn.xlsx:hover{border-color:var(--accent-3);color:var(--accent-3);background:rgba(52,211,153,.06)}
+
+.log-scroll{max-height:480px;overflow-y:auto;padding-right:6px}
+.log-scroll::-webkit-scrollbar{width:6px}
+.log-scroll::-webkit-scrollbar-track{background:transparent}
+.log-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.log-scroll::-webkit-scrollbar-thumb:hover{background:var(--border-hi)}
+
+.log-entry{
+  display:grid;grid-template-columns:32px 48px 1fr auto auto;gap:12px;align-items:center;
+  padding:10px 12px;border-radius:11px;border:1px solid var(--border);
+  margin-bottom:8px;background:var(--surface);transition:all .2s;
+  animation:slideIn .35s ease;
+}
+.log-entry:hover{border-color:var(--border-hi);background:var(--card-hi)}
+.log-entry.flag{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.04)}
+@keyframes slideIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+.log-idx{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center}
+.log-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid var(--border);cursor:pointer;transition:transform .15s}
+.log-thumb:hover{transform:scale(1.06)}
+.log-thumb.placeholder{background:var(--bg-2);display:grid;place-items:center;color:var(--muted);font-size:18px}
+.log-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.log-sub{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5}
+.log-flags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.flag-chip{font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:4px;letter-spacing:.5px;font-weight:600}
+.flag-chip.warn{background:rgba(251,191,36,.12);color:var(--warn);border:1px solid rgba(251,191,36,.3)}
+.flag-chip.ok{background:rgba(52,211,153,.1);color:var(--accent-3);border:1px solid rgba(52,211,153,.25)}
+.flag-chip.late{background:rgba(167,139,250,.12);color:var(--accent-2);border:1px solid rgba(167,139,250,.3)}
+.token-chip{
+  font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:3px 8px;border-radius:5px;
+  background:rgba(110,231,255,.08);color:var(--accent);border:1px solid rgba(110,231,255,.22);white-space:nowrap;
+}
+.log-del{
+  background:transparent;border:1px solid var(--border);color:var(--muted);
+  width:30px;height:30px;border-radius:7px;cursor:pointer;display:grid;place-items:center;
+  font-size:14px;transition:all .15s;
+}
+.log-del:hover{border-color:var(--red);color:var(--red);background:rgba(251,113,133,.06)}
+.log-empty{text-align:center;padding:40px 20px;font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:1px}
+.log-empty .ico{font-size:32px;margin-bottom:8px;opacity:.4}
+
+/* ─── STUDENT VIEW ─── */
+.student-wrap{max-width:440px;margin:0 auto}
+.step{display:none;animation:fadeIn .35s ease}
+.step.active{display:block}
+.big-heading{
+  font-size:32px;font-weight:800;line-height:1.1;margin-bottom:8px;letter-spacing:-.02em;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.sub-heading{font-size:14px;color:var(--text-dim);margin-bottom:24px;line-height:1.6}
+.s-field{margin-bottom:14px}
+.s-field label{display:block;font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;font-weight:600}
+.s-field input{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  color:var(--text);font-family:var(--sans);font-size:15px;padding:13px 15px;border-radius:11px;outline:none;transition:all .2s;
+}
+.s-field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(110,231,255,.1)}
+.s-field input.err{border-color:var(--red)}
+.token-big{font-family:var(--mono)!important;font-size:20px!important;letter-spacing:5px!important;text-align:center;text-transform:uppercase}
+.err-msg{font-family:var(--mono);font-size:11px;color:var(--red);margin-top:6px;display:none}
+.err-msg.show{display:block}
+
+.cam-shell{
+  position:relative;background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;aspect-ratio:1/1;margin-bottom:14px;
+}
+#videoEl, #snapPreview{width:100%;height:100%;object-fit:cover;display:none}
+#snapCanvas{display:none}
+.cam-msg{
+  position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  background:rgba(5,7,13,.5);backdrop-filter:blur(4px);color:var(--text-dim);font-size:13px;text-align:center;padding:20px;
+}
+.cam-frame-overlay{
+  position:absolute;inset:24px;border:2px dashed rgba(110,231,255,.4);border-radius:50%;pointer-events:none;
+}
+
+.success-card{
+  text-align:center;padding:30px 20px;background:linear-gradient(180deg,rgba(52,211,153,.1) 0%, transparent 100%);
+  border:1px solid rgba(52,211,153,.25);border-radius:16px;
+}
+.success-icon{
+  width:72px;height:72px;border-radius:50%;background:rgba(52,211,153,.15);
+  display:grid;place-items:center;font-size:38px;margin:0 auto 16px;
+  border:2px solid var(--accent-3);
+}
+.success-thumb{
+  width:120px;height:120px;border-radius:50%;object-fit:cover;
+  border:3px solid var(--accent-3);margin:0 auto 16px;display:block;
+  box-shadow:0 0 0 6px rgba(52,211,153,.1);
+}
+.detail-box{text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:18px}
+.detail-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);gap:12px}
+.detail-row:last-child{border:none}
+.dk{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.dv{font-size:13px;color:var(--text);font-weight:500;text-align:right;word-break:break-word}
+
+/* ─── LIGHTBOX ─── */
+.lightbox{
+  position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:200;
+  display:none;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;
+}
+.lightbox.show{display:flex}
+.lightbox img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 0 60px rgba(110,231,255,.3)}
+
+/* ─── CONFIG MODAL ─── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:150;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border-hi);border-radius:16px;padding:24px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:6px}
+.modal p.sub{font-size:13px;color:var(--text-dim);margin-bottom:18px;line-height:1.6}
+
+/* ─── SETUP NOTICE ─── */
+.setup-notice{
+  background:linear-gradient(135deg,rgba(251,191,36,.08),rgba(251,113,133,.06));
+  border:1px solid rgba(251,191,36,.3);border-radius:14px;padding:18px;margin-bottom:20px;
+}
+.setup-notice h4{font-size:14px;font-weight:700;color:var(--warn);margin-bottom:6px}
+.setup-notice p{font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:8px}
+.setup-notice code{background:rgba(0,0,0,.4);padding:3px 7px;border-radius:5px;font-family:var(--mono);font-size:11px;color:var(--accent);display:inline-block;word-break:break-all}
+
+/* ─── TOAST ─── */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--card-hi);border:1px solid var(--border-hi);
+  padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;
+  box-shadow:0 10px 40px rgba(0,0,0,.5);
+  opacity:0;transition:all .3s;z-index:300;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:var(--accent-3);color:var(--accent-3)}
+.toast.error{border-color:var(--red);color:var(--red)}
+.toast.info{border-color:var(--accent);color:var(--accent)}
+
+@media(max-width:540px){
+  .nav{padding:12px 14px}
+  .nav-title{display:none}
+  .view{padding:18px 14px 50px}
+  .card{padding:18px}
+  .big-heading{font-size:26px}
+  .qr-zone{gap:20px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .log-entry{grid-template-columns:28px 40px 1fr auto;gap:8px}
+  .log-entry .token-chip{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════ NAV ════════════ -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-mark">📋</div>
+    <div class="nav-title"><b>USAM</b> · ASISTENCIA QR</div>
+  </div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" id="tabP" onclick="switchView('prof', this)">Profesor</button>
+    <button class="tab-btn" id="tabM" onclick="switchView('monitor', this)">Monitor</button>
+    <button class="tab-btn" id="tabS" onclick="switchView('student', this)">Alumno</button>
+  </div>
+  <span class="pill off" id="sessionPill"><span class="dot"></span>SIN SESIÓN</span>
+</nav>
+
+<!-- ════════════ VISTA PROFESOR ════════════ -->
+<section id="view-prof" class="view active">
+
+  <div class="setup-notice" id="setupNotice" style="display:none">
+    <h4>⚙️ Configuración inicial requerida</h4>
+    <p>Para activar el modo en línea con sincronización en tiempo real, configura tu Firebase. Pulsa el botón abajo.</p>
+    <button class="btn btn-warn" onclick="openConfigModal()" style="flex:initial">Configurar Firebase</button>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Datos de la sesión</span>
+      <button class="export-btn" onclick="openConfigModal()" title="Configuración">⚙ Config</button>
+    </div>
+    <div class="fields-row">
+      <div class="field"><label>Materia</label><input id="subject" placeholder="Bacteriología y Micología"></div>
+      <div class="field"><label>Grupo / Ciclo</label><input id="group" placeholder="4° ciclo"></div>
+      <div class="field"><label>Fecha</label><input id="dateInput" type="date"></div>
+      <div class="field"><label>Tema (opcional)</label><input id="topic" placeholder="Unidad I — Clase 03"></div>
+    </div>
+
+    <span class="card-title" style="margin-top:6px;display:block;margin-bottom:10px">Duración del QR</span>
+    <div class="dur-group">
+      <button class="dur-btn" data-val="60">1 MIN</button>
+      <button class="dur-btn active" data-val="120">2 MIN</button>
+      <button class="dur-btn" data-val="180">3 MIN</button>
+      <button class="dur-btn" data-val="300">5 MIN</button>
+    </div>
+
+    <div class="toggle-row">
+      <label for="tglPhoto">Selfie obligatoria
+        <small>El alumno debe tomarse una foto al registrarse</small>
+      </label>
+      <label class="switch"><input type="checkbox" id="tglPhoto" checked><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <label for="tglOnce">Un dispositivo = un alumno
+        <small>Bloquea registros múltiples desde el mismo teléfono</small>
+      </label>
+      <label class="switch"><input type="checkbox" id="tglOnce" checked><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <label for="tglLate">Marcar tardíos
+        <small>Los registros después de los primeros <input type="number" id="lateMin" value="10" min="1" max="60" style="width:50px;background:var(--bg);border:1px solid var(--border);color:var(--accent);padding:2px 6px;border-radius:4px;font-family:var(--mono);text-align:center"> min se marcan como tardíos</small>
+      </label>
+      <label class="switch"><input type="checkbox" id="tglLate" checked><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Código QR · Sesión activa</span>
+      <span class="status-lbl" id="statusLbl">SIN SESIÓN</span>
+    </div>
+
+    <div class="qr-zone">
+      <div class="qr-frame" id="qrFrame">
+        <canvas id="qrCanvas" width="220" height="220"></canvas>
+        <div class="qr-paused show" id="qrPaused">
+          <div class="ico">⏸</div><span>SESIÓN DETENIDA</span>
+        </div>
+      </div>
+      <div class="meta-right">
+        <div class="ring-wrap">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle class="ring-bg" cx="48" cy="48" r="38"/>
+            <circle id="ringFg" class="ring-fg" cx="48" cy="48" r="38"
+              stroke-dasharray="238.76" stroke-dashoffset="238.76"/>
+          </svg>
+          <div id="ringNum" class="ring-num">--</div>
+        </div>
+        <div class="token-box">
+          <div class="token-lbl">Código actual</div>
+          <div class="token-val" id="tokenDisp">——————</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnStart" onclick="startSession()">▶ Iniciar sesión</button>
+      <button class="btn btn-outline" id="btnRotate" onclick="rotateQR()" disabled>⟳ Rotar ahora</button>
+      <button class="btn btn-danger" id="btnStop" onclick="stopSession()" disabled>■ Detener</button>
+    </div>
+    <div class="hint-bar" id="qrHint" style="margin-top:14px">
+      <strong>Modo proyector:</strong> presiona <code>F</code> para pantalla completa del QR. El QR se rota automáticamente para evitar capturas y reenvíos.
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Estadísticas en vivo</span>
+    </div>
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-lbl">Total presentes</div>
+        <div class="stat-val acc" id="statTotal">0</div>
+        <div class="stat-sub" id="statTotalSub">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">A tiempo</div>
+        <div class="stat-val green" id="statOnTime">0</div>
+        <div class="stat-sub">Antes del tiempo límite</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Tardíos</div>
+        <div class="stat-val warn" id="statLate">0</div>
+        <div class="stat-sub">Llegada tarde</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Última llegada</div>
+        <div class="stat-val" id="statLast" style="font-size:18px">—</div>
+        <div class="stat-sub" id="statLastName">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Lista de asistencia</span>
+      <span class="pill" id="logBadge"><span class="dot"></span>0 ALUMNOS</span>
+    </div>
+    <div class="log-toolbar">
+      <input type="text" class="search-input" id="searchInput" placeholder="🔍 Buscar por nombre, carnet, correo…" oninput="renderLog()">
+      <button class="export-btn pdf" onclick="exportPDF()">📄 PDF</button>
+      <button class="export-btn xlsx" onclick="exportExcel()">📊 EXCEL</button>
+      <button class="export-btn" onclick="exportCSV()">📑 CSV</button>
+      <button class="export-btn" onclick="clearAttendance()" style="color:var(--red);border-color:rgba(251,113,133,.3)">🗑 Limpiar</button>
+    </div>
+    <div class="log-scroll" id="logBody">
+      <div class="log-empty" id="logEmpty">
+        <div class="ico">📭</div>
+        SIN REGISTROS — INICIA UNA SESIÓN
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ════════════ VISTA MONITOR (solo lectura, para celular) ════════════ -->
+<section id="view-monitor" class="view">
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Monitor en tiempo real</span>
+      <span class="pill" id="monPill"><span class="dot"></span>—</span>
+    </div>
+    <p style="font-size:13px;color:var(--text-dim);line-height:1.6">
+      Vista de solo lectura sincronizada con la sesión activa. Útil para monitorear desde tu celular mientras el QR está en otra pantalla.
+    </p>
+    <div class="stats-grid" style="margin-top:14px">
+      <div class="stat"><div class="stat-lbl">Presentes</div><div class="stat-val acc" id="monTotal">0</div></div>
+      <div class="stat"><div class="stat-lbl">A tiempo</div><div class="stat-val green" id="monOnTime">0</div></div>
+      <div class="stat"><div class="stat-lbl">Tardíos</div><div class="stat-val warn" id="monLate">0</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="card-title">Últimos registros</span></div>
+    <div class="log-scroll" id="monBody">
+      <div class="log-empty"><div class="ico">📡</div>ESPERANDO REGISTROS…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ VISTA ALUMNO ════════════ -->
+<section id="view-student" class="view">
+  <div class="student-wrap">
+
+    <!-- Paso 1: datos -->
+    <div class="step active" id="step1">
+      <h1 class="big-heading">Registra tu asistencia</h1>
+      <p class="sub-heading">Ingresa tus datos y el código del QR proyectado por el profesor.</p>
+
+      <div class="card" style="padding:20px">
+        <div class="s-field">
+          <label>Nombre completo</label>
+          <input id="s-name" placeholder="Tu nombre" autocomplete="name">
+        </div>
+        <div class="s-field">
+          <label>Carnet</label>
+          <input id="s-carnet" placeholder="Ej. 230012025" autocomplete="off" inputmode="text">
+        </div>
+        <div class="s-field">
+          <label>Correo institucional</label>
+          <input id="s-email" type="email" placeholder="tu.correo@usam.edu.sv" autocomplete="email">
+        </div>
+        <div class="s-field">
+          <label>Código del QR</label>
+          <input id="s-token" class="token-big" placeholder="ABC-123" maxlength="8" autocomplete="off">
+          <div class="err-msg" id="errToken">⚠️ Código inválido o expirado. Escanea el QR de nuevo.</div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="validateStep1()">Continuar →</button>
+      </div>
+    </div>
+
+    <!-- Paso 2: foto -->
+    <div class="step" id="step2">
+      <h1 class="big-heading">Verificación</h1>
+      <p class="sub-heading">Toma una selfie para confirmar tu asistencia.</p>
+
+      <div class="card" style="padding:20px">
+        <div class="cam-shell">
+          <video id="videoEl" autoplay playsinline muted></video>
+          <img id="snapPreview" alt="">
+          <canvas id="snapCanvas"></canvas>
+          <div class="cam-msg" id="camMsg">
+            <span style="font-size:24px">📷</span>
+            <span>Iniciando cámara...</span>
+          </div>
+          <div class="cam-frame-overlay" id="camOverlay"></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%" id="shutterBtn" onclick="handleShutter()">📸 Tomar foto</button>
+        <button class="btn btn-outline" style="width:100%;margin-top:8px;display:none" id="retakeBtn" onclick="retake()">↻ Repetir foto</button>
+        <button class="btn btn-outline" style="width:100%;margin-top:8px" onclick="goStep(1)">← Volver</button>
+      </div>
+    </div>
+
+    <!-- Paso 3: éxito -->
+    <div class="step" id="step3">
+      <div class="success-card">
+        <div class="success-icon">✓</div>
+        <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">¡Asistencia registrada!</h2>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Ya puedes guardar tu teléfono. El profesor verá tu registro al instante.</p>
+        <img id="successThumb" class="success-thumb" alt="">
+        <div class="detail-box" id="detailBox"></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLb()">
+  <img id="lbImg" alt="">
+</div>
+
+<!-- Config Modal -->
+<div class="modal-bg" id="configModal">
+  <div class="modal">
+    <h3>⚙️ Configuración de Firebase</h3>
+    <p class="sub">Pega aquí la configuración de tu proyecto Firebase. Esto se guarda solo en tu navegador. Si no la tienes, sigue la guía paso a paso en el README.</p>
+
+    <div class="field">
+      <label>databaseURL (obligatorio)</label>
+      <input id="cfgDbUrl" placeholder="https://tu-proyecto-default-rtdb.firebaseio.com">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label>apiKey</label>
+      <input id="cfgApiKey" placeholder="AIzaSy...">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label>projectId</label>
+      <input id="cfgProjectId" placeholder="tu-proyecto">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label>authDomain</label>
+      <input id="cfgAuthDomain" placeholder="tu-proyecto.firebaseapp.com">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label>O pega el objeto firebaseConfig completo</label>
+      <textarea id="cfgPaste" placeholder='{ "apiKey": "...", "authDomain": "...", "databaseURL": "...", "projectId": "..." }'></textarea>
+    </div>
+
+    <div class="field" style="margin-top:14px">
+      <label>Contraseña de profesor (opcional pero recomendada)</label>
+      <input id="cfgPassword" type="password" placeholder="Para proteger funciones de profesor">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeConfigModal()">Cancelar</button>
+      <button class="btn btn-outline" onclick="testFirebase()">🔌 Probar conexión</button>
+      <button class="btn btn-primary" onclick="saveFirebaseConfig()">💾 Guardar</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6">
+      💡 Una vez configurado, el sistema funciona también sin internet en modo local. Si Firebase falla, todo se guarda en este dispositivo.
+    </p>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   USAM · Control de Asistencia QR v4
+   Profesor: Lic. Óscar González Pleitez
+   Características: Firebase tiempo real, anti-trampa, exportación
+   ═══════════════════════════════════════════════════════════════ */
+
+// ─── Estado global ───
+const STATE = {
+  sessionActive: false,
+  duration: 120,         // segundos
+  remaining: 0,
+  timerInterval: null,
+  currentToken: null,
+  currentNonce: null,    // pieza extra del token, no expuesta
+  sessionId: null,       // ID único de la sesión activa
+  sessionMeta: {},
+  sessionStartTime: null,
+  log: [],               // registros locales/sincronizados
+  snapped: false,
+  stream: null,
+  fb: null,              // instancia Firebase
+  fbApp: null,
+  fbDb: null,
+  fbUnsub: null,         // función para cancelar listener
+  online: false,         // ¿hay conexión Firebase activa?
+  deviceId: null,
+  config: {
+    photoRequired: true,
+    onceDevice: true,
+    markLate: true,
+    lateMinutes: 10
+  },
+  firebaseConfig: null,
+  teacherPassword: null
+};
+
+// Tabla de tokens válidos recientes (para tolerancia al rotar)
+const RECENT_TOKENS = new Map(); // token => expirationTimestamp
+
+const CIRC = 2 * Math.PI * 38;
+
+// ═══════════════════════════════════════════════════════════════
+// 1. INICIALIZACIÓN
+// ═══════════════════════════════════════════════════════════════
+
+window.addEventListener('DOMContentLoaded', init);
+
+function init() {
+  // Fecha de hoy
+  document.getElementById('dateInput').valueAsDate = new Date();
+
+  // Device ID persistente (anti-trampa)
+  STATE.deviceId = localStorage.getItem('usam_device_id');
+  if (!STATE.deviceId) {
+    STATE.deviceId = 'dev_' + crypto.randomUUID().replace(/-/g,'').slice(0,16);
+    localStorage.setItem('usam_device_id', STATE.deviceId);
+  }
+
+  // Botones de duración
+  document.querySelectorAll('.dur-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.dur-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      STATE.duration = parseInt(b.dataset.val);
+    });
+  });
+
+  // Cargar configuración guardada
+  loadConfig();
+
+  // Verificar URL params (vista alumno desde QR)
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('view') === 'student') {
+    document.getElementById('tabS').click();
+  }
+
+  // Atajos de teclado
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F' || e.key === 'f') {
+      const view = document.querySelector('.view.active').id;
+      if (view === 'view-prof' && STATE.sessionActive) toggleQRFullscreen();
+    }
+  });
+
+  // Intentar conectar a Firebase si hay config guardada
+  if (STATE.firebaseConfig) {
+    setTimeout(connectFirebase, 500);
+  } else {
+    document.getElementById('setupNotice').style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 2. CONFIGURACIÓN Y FIREBASE
+// ═══════════════════════════════════════════════════════════════
+
+function loadConfig() {
+  const saved = localStorage.getItem('usam_fb_config');
+  if (saved) {
+    try {
+      STATE.firebaseConfig = JSON.parse(saved);
+    } catch(e) { console.warn('Config inválida'); }
+  }
+  STATE.teacherPassword = localStorage.getItem('usam_teacher_pw') || null;
+}
+
+function openConfigModal() {
+  document.getElementById('configModal').classList.add('show');
+  if (STATE.firebaseConfig) {
+    document.getElementById('cfgDbUrl').value = STATE.firebaseConfig.databaseURL || '';
+    document.getElementById('cfgApiKey').value = STATE.firebaseConfig.apiKey || '';
+    document.getElementById('cfgProjectId').value = STATE.firebaseConfig.projectId || '';
+    document.getElementById('cfgAuthDomain').value = STATE.firebaseConfig.authDomain || '';
+  }
+}
+
+function closeConfigModal() {
+  document.getElementById('configModal').classList.remove('show');
+}
+
+function parseConfigInputs() {
+  const paste = document.getElementById('cfgPaste').value.trim();
+  const urlField = document.getElementById('cfgDbUrl').value.trim();
+  const apiKeyField = document.getElementById('cfgApiKey').value.trim();
+  const projectIdField = document.getElementById('cfgProjectId').value.trim();
+  const authDomainField = document.getElementById('cfgAuthDomain').value.trim();
+
+  // Si los campos individuales tienen datos, prefiere esos (son más explícitos)
+  if (urlField) {
+    if (!isValidDatabaseURL(urlField)) {
+      toast('La URL de la base de datos no parece válida. Debe ser https://xxx.firebaseio.com', 'error');
+      return null;
+    }
+    return {
+      databaseURL: urlField,
+      apiKey: apiKeyField || 'placeholder',
+      projectId: projectIdField || 'placeholder',
+      authDomain: authDomainField || ''
+    };
+  }
+
+  // Si no hay URL pero sí textarea, parsea el textarea
+  if (paste) {
+    const obj = parseFirebaseConfigBlob(paste);
+    if (!obj) {
+      toast('No reconocí el bloque pegado. Verifica que sea un objeto firebaseConfig completo.', 'error');
+      return null;
+    }
+    if (!obj.databaseURL || !isValidDatabaseURL(obj.databaseURL)) {
+      toast('El bloque pegado no tiene un databaseURL válido (debe ser https://xxx.firebaseio.com)', 'error');
+      return null;
+    }
+    return obj;
+  }
+
+  toast('La URL de la base de datos es obligatoria', 'error');
+  return null;
+}
+
+function isValidDatabaseURL(url) {
+  // Debe ser https://algo.firebaseio.com (con o sin -default-rtdb)
+  // Y NO debe ser el placeholder de ejemplo
+  if (!/^https:\/\/[^\s\/]+\.firebaseio\.com\/?$/.test(url)) return false;
+  if (url.includes('tu-proyecto') || url.includes('your-project')) return false;
+  return true;
+}
+
+/**
+ * Parser robusto: acepta el bloque de código completo de Firebase Console
+ * (con comentarios, "const firebaseConfig = {...};", initializeApp, imports, etc.)
+ * y extrae solo el objeto de configuración.
+ */
+function parseFirebaseConfigBlob(raw) {
+  if (!raw) return null;
+
+  // 1. Quitar comentarios de línea // y de bloque /* */
+  let txt = raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  // 2. Buscar el primer objeto literal balanceado { ... } después de "firebaseConfig"
+  //    o en su defecto el primero del texto.
+  const objStr = extractFirstBalancedObject(txt);
+  if (!objStr) return null;
+
+  // 3. Intentar parsear como JSON (después de normalizar)
+  //    - claves sin comillas → con comillas
+  //    - comillas simples → dobles
+  //    - quitar comas finales
+  const normalized = objStr
+    .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
+    .replace(/'/g, '"')
+    .replace(/,(\s*[}\]])/g, '$1');
+
+  try {
+    const obj = JSON.parse(normalized);
+    // Validación mínima: debe tener al menos databaseURL o projectId
+    if (!obj.databaseURL && !obj.projectId && !obj.apiKey) return null;
+    return obj;
+  } catch (e) {
+    // Último intento: usar Function como sandbox controlado (solo evalúa expresión literal)
+    try {
+      const obj = Function('"use strict"; return (' + objStr + ');')();
+      if (typeof obj === 'object' && obj !== null) return obj;
+    } catch (_) {}
+    return null;
+  }
+}
+
+/**
+ * Extrae el primer objeto literal { ... } con llaves balanceadas, ignorando llaves
+ * dentro de strings.
+ */
+function extractFirstBalancedObject(txt) {
+  // Preferir el que viene después de "firebaseConfig"
+  let start = txt.search(/firebaseConfig\s*=\s*\{/);
+  if (start >= 0) start = txt.indexOf('{', start);
+  else start = txt.indexOf('{');
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inStr = false;
+  let strCh = '';
+  for (let i = start; i < txt.length; i++) {
+    const c = txt[i];
+    if (inStr) {
+      if (c === '\\') { i++; continue; }
+      if (c === strCh) inStr = false;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') { inStr = true; strCh = c; continue; }
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return txt.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+async function testFirebase() {
+  const cfg = parseConfigInputs();
+  if (!cfg) return;
+  toast('Probando conexión...', 'info');
+  try {
+    if (!window.firebaseLib) {
+      toast('Esperando librería Firebase...', 'info');
+      await new Promise(r => window.addEventListener('firebase-ready', r, {once:true}));
+    }
+    const { initializeApp, getDatabase, ref, get } = window.firebaseLib;
+    const testApp = initializeApp(cfg, 'test-' + Date.now());
+    const testDb = getDatabase(testApp);
+    // Usar una ruta válida (sin . al inicio) para probar conectividad
+    // Si las reglas permiten lectura en active_session o archive, esto funcionará
+    await get(ref(testDb, 'active_session'));
+    toast('✓ Conexión exitosa — listo para usar', 'success');
+  } catch(e) {
+    console.error(e);
+    let msg = e.message || 'no se pudo conectar';
+    // Mensajes amigables para errores comunes
+    if (msg.includes('PERMISSION_DENIED') || msg.includes('Permission denied')) {
+      msg = 'Conexión OK pero las reglas no permiten leer. Revisa las reglas en Firebase Console.';
+    } else if (msg.includes('Invalid token in path')) {
+      msg = 'Bug interno corregido. Recarga la página y prueba de nuevo.';
+    } else if (msg.includes('NETWORK') || msg.includes('network')) {
+      msg = 'Sin internet o URL incorrecta. Verifica tu conexión.';
+    } else if (msg.includes('apiKey')) {
+      msg = 'apiKey inválida. Cópiala de nuevo desde Firebase Console (empieza con "AIza", la I es mayúscula).';
+    }
+    toast('✗ ' + msg, 'error');
+  }
+}
+
+async function saveFirebaseConfig() {
+  const cfg = parseConfigInputs();
+  if (!cfg) return;
+  const pw = document.getElementById('cfgPassword').value.trim();
+
+  STATE.firebaseConfig = cfg;
+  localStorage.setItem('usam_fb_config', JSON.stringify(cfg));
+  if (pw) {
+    // Hash simple SHA-256 (igual estilo que tu app anterior)
+    const hash = await sha256(pw);
+    localStorage.setItem('usam_teacher_pw', hash);
+    STATE.teacherPassword = hash;
+  }
+  document.getElementById('setupNotice').style.display = 'none';
+  closeConfigModal();
+  toast('Configuración guardada. Conectando...', 'success');
+  setTimeout(connectFirebase, 300);
+}
+
+async function sha256(text) {
+  const buf = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function connectFirebase() {
+  if (!STATE.firebaseConfig) return;
+  try {
+    if (!window.firebaseLib) {
+      await new Promise(r => window.addEventListener('firebase-ready', r, {once:true}));
+    }
+    const { initializeApp, getDatabase } = window.firebaseLib;
+    STATE.fbApp = initializeApp(STATE.firebaseConfig, 'usam-attendance-' + Date.now());
+    STATE.fbDb = getDatabase(STATE.fbApp);
+    STATE.online = true;
+    toast('🟢 Conectado a Firebase', 'success');
+    listenActiveSession();
+  } catch(e) {
+    console.error('Firebase connect error:', e);
+    toast('Sin conexión Firebase — modo local', 'info');
+    STATE.online = false;
+  }
+}
+
+// Escuchar la sesión activa global (para vista alumno y monitor)
+function listenActiveSession() {
+  if (!STATE.fbDb) return;
+  const { ref, onValue } = window.firebaseLib;
+  const sessionRef = ref(STATE.fbDb, 'active_session');
+  onValue(sessionRef, snap => {
+    const data = snap.val();
+    if (data) {
+      // Hay sesión activa en Firebase
+      const view = document.querySelector('.view.active')?.id;
+      if (view === 'view-monitor' || view === 'view-student') {
+        syncFromFirebase(data);
+      }
+    } else {
+      // No hay sesión activa
+      if (document.querySelector('.view.active')?.id === 'view-monitor') {
+        renderMonitor([]);
+      }
+    }
+  });
+}
+
+function syncFromFirebase(sessionData) {
+  // Validar token actual desde Firebase para vista alumno
+  if (sessionData && sessionData.currentToken) {
+    STATE.currentToken = sessionData.currentToken;
+    STATE.sessionId = sessionData.sessionId;
+    STATE.sessionMeta = sessionData.meta || {};
+
+    // Recents tokens para validación
+    if (sessionData.recentTokens) {
+      RECENT_TOKENS.clear();
+      Object.entries(sessionData.recentTokens).forEach(([tk, exp]) => {
+        if (exp > Date.now()) RECENT_TOKENS.set(tk, exp);
+      });
+    }
+  }
+
+  // Sincronizar log para vista monitor
+  if (sessionData && sessionData.attendees) {
+    const list = Object.values(sessionData.attendees).sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+    if (document.querySelector('.view.active')?.id === 'view-monitor') {
+      renderMonitor(list);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 3. NAVEGACIÓN
+// ═══════════════════════════════════════════════════════════════
+
+function switchView(v, btn) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  btn.classList.add('active');
+  if (v === 'student') initStudent();
+  else stopCamera();
+  if (v === 'monitor') refreshMonitor();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 4. GENERACIÓN DE TOKENS Y QR (PROFESOR)
+// ═══════════════════════════════════════════════════════════════
+
+function genToken() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let t = '';
+  for (let i = 0; i < 6; i++) {
+    if (i === 3) t += '-';
+    t += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return t;
+}
+
+function genNonce() {
+  return crypto.randomUUID().replace(/-/g,'').slice(0,12);
+}
+
+async function drawQR(text) {
+  const dest = document.getElementById('qrCanvas');
+  const ctx = dest.getContext('2d');
+  ctx.clearRect(0, 0, dest.width, dest.height);
+
+  // Crear contenedor temporal
+  const tmp = document.createElement('div');
+  tmp.style.cssText = 'position:absolute;visibility:hidden;left:-9999px';
+  document.body.appendChild(tmp);
+
+  if (window.QRCode) {
+    new QRCode(tmp, {
+      text, width:220, height:220,
+      colorDark:'#000', colorLight:'#fff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    setTimeout(() => {
+      const src = tmp.querySelector('canvas');
+      if (src) ctx.drawImage(src, 0, 0);
+      tmp.remove();
+    }, 80);
+  } else {
+    // Fallback
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 220, 220);
+    ctx.fillStyle = '#000'; ctx.font = 'bold 18px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('QR', 110, 110);
+    tmp.remove();
+  }
+}
+
+function newCycle() {
+  // Marcar token anterior como "reciente válido" por 10s extra (tolerancia)
+  if (STATE.currentToken) {
+    RECENT_TOKENS.set(STATE.currentToken, Date.now() + 10000);
+  }
+
+  STATE.currentToken = genToken();
+  STATE.currentNonce = genNonce();
+  document.getElementById('tokenDisp').textContent = STATE.currentToken;
+
+  // URL del QR: incluye view, token y nonce
+  const baseUrl = window.location.href.split('?')[0].split('#')[0];
+  const qrUrl = `${baseUrl}?view=student&t=${STATE.currentToken}&n=${STATE.currentNonce}`;
+  drawQR(qrUrl);
+
+  STATE.remaining = STATE.duration;
+  updateRing(STATE.remaining, STATE.duration);
+
+  // Sync token a Firebase
+  if (STATE.online && STATE.sessionId) {
+    pushTokenToFirebase();
+  }
+}
+
+async function pushTokenToFirebase() {
+  if (!STATE.fbDb || !STATE.sessionId) return;
+  const { ref, set } = window.firebaseLib;
+  // Token actual + tokens recientes válidos
+  const recentObj = {};
+  RECENT_TOKENS.forEach((exp, tk) => { if (exp > Date.now()) recentObj[tk] = exp; });
+
+  await set(ref(STATE.fbDb, 'active_session/currentToken'), STATE.currentToken);
+  await set(ref(STATE.fbDb, 'active_session/recentTokens'), recentObj);
+  await set(ref(STATE.fbDb, 'active_session/lastRotation'), Date.now());
+}
+
+function updateRing(s, total) {
+  const fg = document.getElementById('ringFg');
+  const num = document.getElementById('ringNum');
+  fg.style.strokeDashoffset = CIRC * (1 - s / total);
+  const isWarn = s <= 30 && s > 0;
+  fg.classList.toggle('warn', isWarn);
+  num.classList.toggle('warn', isWarn);
+  document.getElementById('qrFrame').classList.toggle('warn-glow', isWarn);
+  num.textContent = s >= 60 ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2,'0') : (s || '--');
+}
+
+async function startSession() {
+  // Recoger configuración
+  STATE.config.photoRequired = document.getElementById('tglPhoto').checked;
+  STATE.config.onceDevice = document.getElementById('tglOnce').checked;
+  STATE.config.markLate = document.getElementById('tglLate').checked;
+  STATE.config.lateMinutes = parseInt(document.getElementById('lateMin').value) || 10;
+
+  STATE.sessionMeta = {
+    subject: document.getElementById('subject').value.trim() || 'Sesión sin nombre',
+    group:   document.getElementById('group').value.trim() || '',
+    date:    document.getElementById('dateInput').value || new Date().toISOString().slice(0,10),
+    topic:   document.getElementById('topic').value.trim() || ''
+  };
+
+  STATE.sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+  STATE.sessionStartTime = Date.now();
+  STATE.sessionActive = true;
+  STATE.log = [];
+  RECENT_TOKENS.clear();
+
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnRotate').disabled = false;
+  document.getElementById('btnStop').disabled = false;
+  document.getElementById('qrPaused').classList.remove('show');
+  document.getElementById('sessionPill').innerHTML = `<span class="dot"></span>${STATE.sessionMeta.subject.toUpperCase()} · ACTIVO`;
+  document.getElementById('sessionPill').classList.remove('off');
+  setStatus('SESIÓN ACTIVA');
+
+  // Subir sesión a Firebase
+  if (STATE.online) {
+    await pushSessionToFirebase();
+    listenAttendees();
+  }
+
+  newCycle();
+
+  STATE.timerInterval = setInterval(() => {
+    STATE.remaining--;
+    updateRing(STATE.remaining, STATE.duration);
+    if (STATE.remaining <= 0) {
+      newCycle();
+      setStatus('QR ROTADO');
+      setTimeout(() => { if (STATE.sessionActive) setStatus('SESIÓN ACTIVA'); }, 2000);
+    }
+  }, 1000);
+
+  renderLog();
+}
+
+async function pushSessionToFirebase() {
+  if (!STATE.fbDb) return;
+  const { ref, set, serverTimestamp, onDisconnect } = window.firebaseLib;
+  const sessionData = {
+    sessionId: STATE.sessionId,
+    meta: STATE.sessionMeta,
+    config: STATE.config,
+    startTime: serverTimestamp(),
+    attendees: {}
+  };
+  await set(ref(STATE.fbDb, 'active_session'), sessionData);
+  // Si el profesor cierra la pestaña, no borrar (necesitamos persistencia)
+  // Pero archivar al detener manualmente.
+}
+
+function listenAttendees() {
+  if (!STATE.fbDb || !STATE.sessionId) return;
+  const { ref, onValue } = window.firebaseLib;
+  const attRef = ref(STATE.fbDb, 'active_session/attendees');
+  STATE.fbUnsub = onValue(attRef, snap => {
+    const data = snap.val() || {};
+    const arr = Object.entries(data).map(([key, val]) => ({ ...val, _fbKey: key }));
+    arr.sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+    STATE.log = arr;
+    renderLog();
+    updateStats();
+  });
+}
+
+function rotateQR() {
+  if (!STATE.sessionActive) return;
+  newCycle();
+  setStatus('QR ROTADO MANUALMENTE');
+  setTimeout(() => { if (STATE.sessionActive) setStatus('SESIÓN ACTIVA'); }, 1800);
+}
+
+async function stopSession() {
+  if (!confirm('¿Detener la sesión y archivar los registros?')) return;
+
+  STATE.sessionActive = false;
+  clearInterval(STATE.timerInterval);
+  STATE.timerInterval = null;
+
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnRotate').disabled = true;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('qrPaused').classList.add('show');
+  document.getElementById('sessionPill').innerHTML = '<span class="dot"></span>SIN SESIÓN';
+  document.getElementById('sessionPill').classList.add('off');
+  setStatus('SESIÓN DETENIDA');
+
+  document.getElementById('ringNum').textContent = '--';
+  document.getElementById('ringNum').classList.remove('warn');
+  document.getElementById('ringFg').style.strokeDashoffset = CIRC;
+  document.getElementById('ringFg').classList.remove('warn');
+  document.getElementById('qrFrame').classList.remove('warn-glow');
+
+  // Archivar en Firebase
+  if (STATE.online && STATE.sessionId) {
+    await archiveSession();
+  }
+
+  STATE.currentToken = null;
+  STATE.currentNonce = null;
+  toast('Sesión detenida y archivada', 'success');
+}
+
+async function archiveSession() {
+  if (!STATE.fbDb || !STATE.sessionId) return;
+  const { ref, set, get, remove } = window.firebaseLib;
+  try {
+    const snap = await get(ref(STATE.fbDb, 'active_session'));
+    const data = snap.val();
+    if (data) {
+      data.endTime = Date.now();
+      await set(ref(STATE.fbDb, 'archive/' + STATE.sessionId), data);
+      await remove(ref(STATE.fbDb, 'active_session'));
+    }
+  } catch(e) {
+    console.error('Error archivando:', e);
+  }
+}
+
+function setStatus(t) { document.getElementById('statusLbl').textContent = t; }
+
+// QR Pantalla completa
+function toggleQRFullscreen() {
+  const frame = document.getElementById('qrFrame');
+  if (!document.fullscreenElement) {
+    frame.requestFullscreen?.();
+  } else {
+    document.exitFullscreen?.();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 5. RENDERIZADO DEL LOG
+// ═══════════════════════════════════════════════════════════════
+
+function renderLog() {
+  const body = document.getElementById('logBody');
+  const search = document.getElementById('searchInput').value.trim().toLowerCase();
+  const filtered = STATE.log.filter(e => {
+    if (!search) return true;
+    return [e.name, e.carnet, e.email, e.token].some(v => (v||'').toLowerCase().includes(search));
+  });
+
+  if (filtered.length === 0) {
+    body.innerHTML = STATE.log.length === 0
+      ? '<div class="log-empty"><div class="ico">📭</div>SIN REGISTROS</div>'
+      : '<div class="log-empty"><div class="ico">🔍</div>SIN COINCIDENCIAS</div>';
+    document.getElementById('logBadge').innerHTML = `<span class="dot"></span>${STATE.log.length} ALUMNO${STATE.log.length!==1?'S':''}`;
+    return;
+  }
+
+  body.innerHTML = '';
+  filtered.forEach((e, i) => {
+    const realIdx = STATE.log.indexOf(e);
+    const flags = [];
+    if (e.late) flags.push('<span class="flag-chip late">TARDÍO</span>');
+    if (e.deviceFlag) flags.push('<span class="flag-chip warn">REPETIDO</span>');
+    if (!e.photo) flags.push('<span class="flag-chip warn">SIN FOTO</span>');
+
+    const photoHtml = e.photo
+      ? `<img class="log-thumb" src="${e.photo}" alt="" data-photo="${realIdx}">`
+      : `<div class="log-thumb placeholder">👤</div>`;
+
+    const row = document.createElement('div');
+    row.className = 'log-entry' + (e.deviceFlag ? ' flag' : '');
+    row.innerHTML = `
+      <span class="log-idx">#${STATE.log.length - realIdx}</span>
+      ${photoHtml}
+      <div>
+        <div class="log-name">${escapeHtml(e.name)}</div>
+        <div class="log-sub">${escapeHtml(e.carnet)} · ${escapeHtml(e.email)} · ${e.time}</div>
+        <div class="log-flags">${flags.join('')}</div>
+      </div>
+      <span class="token-chip">${e.token}</span>
+      <button class="log-del" title="Eliminar" data-idx="${realIdx}">✕</button>
+    `;
+    const thumb = row.querySelector('img.log-thumb');
+    if (thumb) thumb.addEventListener('click', () => openLb(STATE.log[realIdx].photo));
+    row.querySelector('.log-del').addEventListener('click', () => deleteEntry(realIdx));
+    body.appendChild(row);
+  });
+
+  document.getElementById('logBadge').innerHTML = `<span class="dot"></span>${STATE.log.length} ALUMNO${STATE.log.length!==1?'S':''}`;
+  updateStats();
+}
+
+function updateStats() {
+  const total = STATE.log.length;
+  const onTime = STATE.log.filter(e => !e.late).length;
+  const late = STATE.log.filter(e => e.late).length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statOnTime').textContent = onTime;
+  document.getElementById('statLate').textContent = late;
+  document.getElementById('statTotalSub').textContent = STATE.sessionMeta.subject || '—';
+  if (STATE.log.length > 0) {
+    const last = STATE.log[0];
+    document.getElementById('statLast').textContent = last.time;
+    document.getElementById('statLastName').textContent = last.name.split(' ').slice(0,2).join(' ');
+  } else {
+    document.getElementById('statLast').textContent = '—';
+    document.getElementById('statLastName').textContent = '—';
+  }
+}
+
+async function deleteEntry(idx) {
+  const entry = STATE.log[idx];
+  if (!entry) return;
+  if (!confirm(`¿Eliminar el registro de ${entry.name}?`)) return;
+  if (STATE.online && entry._fbKey && STATE.fbDb) {
+    const { ref, remove } = window.firebaseLib;
+    try {
+      await remove(ref(STATE.fbDb, 'active_session/attendees/' + entry._fbKey));
+      toast('Registro eliminado', 'success');
+    } catch(e) { toast('Error al eliminar', 'error'); }
+  } else {
+    STATE.log.splice(idx, 1);
+    renderLog();
+  }
+}
+
+async function clearAttendance() {
+  if (!STATE.log.length) { toast('No hay registros', 'info'); return; }
+  if (!confirm(`¿Borrar TODOS los ${STATE.log.length} registros? Esta acción no se puede deshacer.`)) return;
+  if (STATE.online && STATE.fbDb && STATE.sessionId) {
+    const { ref, set } = window.firebaseLib;
+    try {
+      await set(ref(STATE.fbDb, 'active_session/attendees'), {});
+      toast('Lista limpia', 'success');
+    } catch(e) { toast('Error al limpiar', 'error'); }
+  } else {
+    STATE.log = [];
+    renderLog();
+  }
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 6. EXPORTACIONES (PDF, EXCEL, CSV)
+// ═══════════════════════════════════════════════════════════════
+
+function exportPDF() {
+  if (!STATE.log.length) { toast('No hay registros', 'info'); return; }
+  if (!window.jspdf) { toast('Cargando librería PDF...', 'info'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+  const W = doc.internal.pageSize.getWidth();
+  const meta = STATE.sessionMeta;
+
+  // Encabezado USAM
+  doc.setFillColor(11, 17, 32);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setTextColor(110, 231, 255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.text('UNIVERSIDAD SALVADOREÑA ALBERTO MASFERRER', W/2, 11, { align:'center' });
+  doc.setFontSize(9);
+  doc.setTextColor(167, 139, 250);
+  doc.text('CONTROL DE ASISTENCIA · USAM', W/2, 18, { align:'center' });
+  doc.setTextColor(160, 160, 160);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.text(`Generado: ${new Date().toLocaleString('es-SV')}`, W/2, 24, { align:'center' });
+
+  // Datos sesión
+  let y = 38;
+  doc.setTextColor(40,40,40);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.text(meta.subject || 'Sesión', 15, y); y += 6;
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(80,80,80);
+  if (meta.topic) { doc.text(`Tema: ${meta.topic}`, 15, y); y += 5; }
+  if (meta.group) { doc.text(`Grupo: ${meta.group}`, 15, y); y += 5; }
+  doc.text(`Fecha: ${formatDate(meta.date)}`, 15, y); y += 5;
+  doc.text(`Total presentes: ${STATE.log.length}`, 15, y); y += 5;
+  const onTime = STATE.log.filter(e => !e.late).length;
+  const late = STATE.log.filter(e => e.late).length;
+  doc.text(`A tiempo: ${onTime}  ·  Tardíos: ${late}`, 15, y); y += 8;
+
+  // Tabla
+  const sorted = [...STATE.log].sort((a,b) => (a.timestamp||0) - (b.timestamp||0));
+  const rows = sorted.map((e, i) => [
+    i+1,
+    e.name,
+    e.carnet,
+    e.email,
+    e.time,
+    e.late ? 'TARDÍO' : 'A TIEMPO'
+  ]);
+
+  doc.autoTable({
+    startY: y,
+    head: [['#', 'Nombre', 'Carnet', 'Correo', 'Hora', 'Estado']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor:[15,20,40], textColor:[110,231,255], fontStyle:'bold', fontSize:9 },
+    bodyStyles: { fontSize:8, textColor:[40,40,40] },
+    alternateRowStyles: { fillColor:[245,247,252] },
+    columnStyles: {
+      0: { cellWidth:10, halign:'center' },
+      1: { cellWidth:48 },
+      2: { cellWidth:25 },
+      3: { cellWidth:55 },
+      4: { cellWidth:18, halign:'center' },
+      5: { cellWidth:22, halign:'center', fontStyle:'bold' }
+    },
+    didParseCell: data => {
+      if (data.column.index === 5 && data.cell.section === 'body') {
+        if (data.cell.raw === 'TARDÍO') data.cell.styles.textColor = [202, 138, 4];
+        else data.cell.styles.textColor = [22, 163, 74];
+      }
+    },
+    margin: { left:15, right:15 }
+  });
+
+  // Pie de página con firma
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    const H = doc.internal.pageSize.getHeight();
+    doc.setDrawColor(180,180,180);
+    doc.setLineWidth(0.2);
+    if (i === pageCount) {
+      // Firma solo en última página
+      doc.line(W - 80, H - 28, W - 15, H - 28);
+      doc.setFontSize(8); doc.setTextColor(100,100,100);
+      doc.text('Firma del docente', W - 47.5, H - 23, { align:'center' });
+    }
+    doc.setFontSize(7); doc.setTextColor(150,150,150);
+    doc.text(`Página ${i} de ${pageCount}`, W/2, H - 8, { align:'center' });
+    doc.text('USAM — Documento generado electrónicamente', 15, H - 8);
+  }
+
+  const fname = `asistencia_${(meta.subject||'sesion').replace(/\s+/g,'_').toLowerCase()}_${meta.date||'fecha'}.pdf`;
+  doc.save(fname);
+  toast('PDF exportado', 'success');
+}
+
+function exportExcel() {
+  if (!STATE.log.length) { toast('No hay registros', 'info'); return; }
+  if (!window.XLSX) { toast('Cargando librería Excel...', 'info'); return; }
+
+  const meta = STATE.sessionMeta;
+  const sorted = [...STATE.log].sort((a,b) => (a.timestamp||0) - (b.timestamp||0));
+
+  // Hoja 1: Datos
+  const wb = XLSX.utils.book_new();
+  const headerRows = [
+    ['UNIVERSIDAD SALVADOREÑA ALBERTO MASFERRER'],
+    ['Control de Asistencia'],
+    [],
+    ['Materia', meta.subject || ''],
+    ['Tema', meta.topic || ''],
+    ['Grupo', meta.group || ''],
+    ['Fecha', formatDate(meta.date)],
+    ['Total presentes', STATE.log.length],
+    ['A tiempo', STATE.log.filter(e=>!e.late).length],
+    ['Tardíos', STATE.log.filter(e=>e.late).length],
+    [],
+    ['#', 'Nombre', 'Carnet', 'Correo', 'Hora', 'Estado', 'Token usado']
+  ];
+  const dataRows = sorted.map((e,i) => [
+    i+1, e.name, e.carnet, e.email, e.time,
+    e.late ? 'TARDÍO' : 'A TIEMPO', e.token
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([...headerRows, ...dataRows]);
+
+  // Anchos de columna
+  ws['!cols'] = [
+    {wch:6},{wch:32},{wch:14},{wch:30},{wch:10},{wch:12},{wch:10}
+  ];
+
+  // Merges para encabezado
+  ws['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:6}},
+    {s:{r:1,c:0},e:{r:1,c:6}}
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+
+  // Hoja 2: Resumen
+  const summary = [
+    ['Resumen estadístico'],
+    [],
+    ['Métrica', 'Valor'],
+    ['Total registros', STATE.log.length],
+    ['A tiempo', STATE.log.filter(e=>!e.late).length],
+    ['Tardíos', STATE.log.filter(e=>e.late).length],
+    ['Sin foto', STATE.log.filter(e=>!e.photo).length],
+    ['Con marca de duplicado', STATE.log.filter(e=>e.deviceFlag).length],
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet(summary);
+  ws2['!cols'] = [{wch:30},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Resumen');
+
+  const fname = `asistencia_${(meta.subject||'sesion').replace(/\s+/g,'_').toLowerCase()}_${meta.date||'fecha'}.xlsx`;
+  XLSX.writeFile(wb, fname);
+  toast('Excel exportado', 'success');
+}
+
+function exportCSV() {
+  if (!STATE.log.length) { toast('No hay registros', 'info'); return; }
+  const sorted = [...STATE.log].sort((a,b) => (a.timestamp||0) - (b.timestamp||0));
+  const rows = [['#','Nombre','Carnet','Correo','Token','Hora','Estado']];
+  sorted.forEach((e, i) => rows.push([
+    i+1, e.name, e.carnet, e.email, e.token, e.time,
+    e.late ? 'TARDIO' : 'A_TIEMPO'
+  ]));
+  const csv = '\uFEFF' + rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `asistencia_${STATE.sessionMeta.date||'sesion'}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV exportado', 'success');
+}
+
+function formatDate(s) {
+  if (!s) return '';
+  try {
+    const [y,m,d] = s.split('-');
+    return `${d}/${m}/${y}`;
+  } catch { return s; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 7. VISTA ALUMNO
+// ═══════════════════════════════════════════════════════════════
+
+async function initStudent() {
+  const params = new URLSearchParams(window.location.search);
+  const t = params.get('t') || params.get('token');
+  if (t) document.getElementById('s-token').value = t.toUpperCase();
+  goStep(1);
+
+  // Pre-llenar datos guardados (excepto en modo onceDevice estricto)
+  const savedName = localStorage.getItem('usam_stu_name');
+  const savedCarnet = localStorage.getItem('usam_stu_carnet');
+  const savedEmail = localStorage.getItem('usam_stu_email');
+  if (savedName && !document.getElementById('s-name').value) document.getElementById('s-name').value = savedName;
+  if (savedCarnet && !document.getElementById('s-carnet').value) document.getElementById('s-carnet').value = savedCarnet;
+  if (savedEmail && !document.getElementById('s-email').value) document.getElementById('s-email').value = savedEmail;
+
+  // Asegurar conexión a Firebase si hay config
+  if (STATE.firebaseConfig && !STATE.online) {
+    await connectFirebase();
+  }
+}
+
+function goStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step' + n).classList.add('active');
+  if (n === 2) startCamera(); else stopCamera();
+  // Si la foto NO es obligatoria y va al paso 2, saltarlo
+  if (n === 2 && !STATE.config.photoRequired && STATE.sessionMeta.config && STATE.sessionMeta.config.photoRequired === false) {
+    submitAttendance(true);
+  }
+}
+
+async function validateStep1() {
+  const name = document.getElementById('s-name').value.trim();
+  const carnet = document.getElementById('s-carnet').value.trim();
+  const email = document.getElementById('s-email').value.trim();
+  const token = document.getElementById('s-token').value.trim().toUpperCase().replace(/\s/g,'');
+  const errEl = document.getElementById('errToken');
+
+  errEl.classList.remove('show');
+  document.getElementById('s-token').classList.remove('err');
+
+  if (!name || !carnet || !email || !token) {
+    toast('Completa todos los campos', 'error');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast('Correo electrónico inválido', 'error');
+    return;
+  }
+
+  // Si Firebase está activo, validar contra sesión actual de Firebase
+  if (STATE.online && STATE.fbDb) {
+    const valid = await validateTokenOnline(token);
+    if (!valid.ok) {
+      errEl.textContent = '⚠️ ' + valid.reason;
+      errEl.classList.add('show');
+      document.getElementById('s-token').classList.add('err');
+      return;
+    }
+    // Verificar duplicados online
+    const dup = await checkDuplicateOnline(carnet, email);
+    if (dup) {
+      toast('Ya existe un registro con este carnet o correo', 'error');
+      return;
+    }
+    // Verificar dispositivo (si está activado)
+    if (valid.config && valid.config.onceDevice) {
+      const devUsed = await checkDeviceUsed();
+      if (devUsed) {
+        if (!confirm('Este dispositivo ya tiene un registro en esta sesión. ¿Eres tú? Si registraste a otro alumno, se marcará como sospechoso.')) return;
+      }
+    }
+    STATE.sessionMeta = valid.meta;
+    STATE.config = { ...STATE.config, ...valid.config };
+  } else {
+    // Modo offline: validar solo token contra el actual
+    if (!STATE.sessionActive || token !== STATE.currentToken) {
+      // Tolerancia: ¿es un token reciente todavía válido?
+      if (!RECENT_TOKENS.has(token) || RECENT_TOKENS.get(token) < Date.now()) {
+        errEl.textContent = '⚠️ Código inválido o expirado.';
+        errEl.classList.add('show');
+        document.getElementById('s-token').classList.add('err');
+        return;
+      }
+    }
+    if (STATE.log.find(e => e.carnet === carnet || e.email === email)) {
+      toast('Ya existe un registro con este carnet o correo', 'error');
+      return;
+    }
+  }
+
+  // Guardar para próxima vez
+  localStorage.setItem('usam_stu_name', name);
+  localStorage.setItem('usam_stu_carnet', carnet);
+  localStorage.setItem('usam_stu_email', email);
+
+  // ¿Se requiere foto?
+  if (STATE.sessionMeta.config && STATE.sessionMeta.config.photoRequired === false) {
+    await submitAttendance(true);
+  } else if (!STATE.config.photoRequired) {
+    await submitAttendance(true);
+  } else {
+    goStep(2);
+  }
+}
+
+async function validateTokenOnline(token) {
+  const { ref, get } = window.firebaseLib;
+  try {
+    const snap = await get(ref(STATE.fbDb, 'active_session'));
+    const data = snap.val();
+    if (!data) return { ok:false, reason:'No hay sesión activa.' };
+
+    const valid = data.currentToken === token ||
+                  (data.recentTokens && data.recentTokens[token] && data.recentTokens[token] > Date.now());
+    if (!valid) return { ok:false, reason:'Código expirado. Escanea el QR de nuevo.' };
+
+    return { ok:true, meta:data.meta, config:data.config, sessionId:data.sessionId };
+  } catch(e) {
+    return { ok:false, reason:'Error de conexión. Intenta de nuevo.' };
+  }
+}
+
+async function checkDuplicateOnline(carnet, email) {
+  const { ref, get } = window.firebaseLib;
+  try {
+    const snap = await get(ref(STATE.fbDb, 'active_session/attendees'));
+    const data = snap.val() || {};
+    return Object.values(data).some(e => e.carnet === carnet || e.email.toLowerCase() === email.toLowerCase());
+  } catch { return false; }
+}
+
+async function checkDeviceUsed() {
+  const { ref, get } = window.firebaseLib;
+  try {
+    const snap = await get(ref(STATE.fbDb, 'active_session/attendees'));
+    const data = snap.val() || {};
+    return Object.values(data).some(e => e.deviceId === STATE.deviceId);
+  } catch { return false; }
+}
+
+async function startCamera() {
+  STATE.snapped = false;
+  document.getElementById('snapPreview').style.display = 'none';
+  document.getElementById('retakeBtn').style.display = 'none';
+  document.getElementById('shutterBtn').textContent = '📸 Tomar foto';
+  document.getElementById('videoEl').style.display = 'block';
+  document.getElementById('camOverlay').style.display = 'block';
+  const msg = document.getElementById('camMsg');
+  msg.style.display = 'flex';
+  try {
+    STATE.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:'user', width:{ideal:640}, height:{ideal:480} },
+      audio: false
+    });
+    const vid = document.getElementById('videoEl');
+    vid.srcObject = STATE.stream;
+    vid.onloadedmetadata = () => { msg.style.display = 'none'; };
+  } catch(e) {
+    msg.innerHTML = '<span style="font-size:24px">⚠️</span><span>Sin acceso a cámara</span><span style="font-size:11px;opacity:.7">Permite el acceso en tu navegador y recarga.</span>';
+  }
+}
+
+function stopCamera() {
+  if (STATE.stream) {
+    STATE.stream.getTracks().forEach(t => t.stop());
+    STATE.stream = null;
+  }
+}
+
+function handleShutter() {
+  if (!STATE.snapped) takePhoto();
+  else submitAttendance();
+}
+
+function takePhoto() {
+  const vid = document.getElementById('videoEl');
+  const canvas = document.getElementById('snapCanvas');
+  canvas.width = vid.videoWidth || 640;
+  canvas.height = vid.videoHeight || 480;
+  canvas.getContext('2d').drawImage(vid, 0, 0);
+  const url = canvas.toDataURL('image/jpeg', 0.7);
+  const prev = document.getElementById('snapPreview');
+  prev.src = url;
+  prev.style.display = 'block';
+  STATE.snapped = true;
+  stopCamera();
+  document.getElementById('videoEl').style.display = 'none';
+  document.getElementById('camOverlay').style.display = 'none';
+  document.getElementById('camMsg').style.display = 'none';
+  document.getElementById('retakeBtn').style.display = 'block';
+  document.getElementById('shutterBtn').textContent = '✅ Confirmar y registrar';
+}
+
+function retake() {
+  STATE.snapped = false;
+  document.getElementById('snapPreview').style.display = 'none';
+  document.getElementById('retakeBtn').style.display = 'none';
+  document.getElementById('videoEl').style.display = 'block';
+  document.getElementById('camOverlay').style.display = 'block';
+  document.getElementById('shutterBtn').textContent = '📸 Tomar foto';
+  startCamera();
+}
+
+async function submitAttendance(skipPhoto = false) {
+  const name = document.getElementById('s-name').value.trim();
+  const carnet = document.getElementById('s-carnet').value.trim();
+  const email = document.getElementById('s-email').value.trim();
+  const token = document.getElementById('s-token').value.trim().toUpperCase();
+  const photo = skipPhoto ? null : document.getElementById('snapPreview').src;
+  const now = Date.now();
+  const time = new Date(now).toLocaleTimeString('es-SV', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+  // Calcular tardío
+  let isLate = false;
+  const sessionStart = STATE.sessionStartTime || (STATE.sessionMeta && STATE.sessionMeta.startTime) || now;
+  if (STATE.config.markLate) {
+    const diffMin = (now - sessionStart) / 60000;
+    isLate = diffMin > (STATE.config.lateMinutes || 10);
+  }
+
+  const entry = {
+    name, carnet, email, token, photo,
+    time, timestamp: now,
+    deviceId: STATE.deviceId,
+    late: isLate,
+    deviceFlag: false
+  };
+
+  // Subir a Firebase si está online
+  if (STATE.online && STATE.fbDb) {
+    const { ref, push, set, serverTimestamp } = window.firebaseLib;
+    try {
+      const newRef = push(ref(STATE.fbDb, 'active_session/attendees'));
+      // Verificar duplicado de dispositivo justo antes de escribir
+      const devCheck = await checkDeviceUsed();
+      if (devCheck) entry.deviceFlag = true;
+
+      await set(newRef, { ...entry, timestamp: serverTimestamp() });
+    } catch(e) {
+      console.error('Firebase write error:', e);
+      toast('Error al sincronizar. Reintentando...', 'error');
+      // Guardar localmente como respaldo
+      STATE.log.unshift(entry);
+    }
+  } else {
+    // Modo local
+    STATE.log.unshift(entry);
+    addLogLocal(entry);
+  }
+
+  // Mostrar éxito
+  document.getElementById('successThumb').src = photo || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%231a2340%22 width=%22100%22 height=%22100%22/%3E%3Ctext y=%22.9em%22 font-size=%2260%22 x=%2220%22%3E👤%3C/text%3E%3C/svg%3E';
+  document.getElementById('detailBox').innerHTML = `
+    <div class="detail-row"><span class="dk">Nombre</span><span class="dv">${escapeHtml(name)}</span></div>
+    <div class="detail-row"><span class="dk">Carnet</span><span class="dv">${escapeHtml(carnet)}</span></div>
+    <div class="detail-row"><span class="dk">Correo</span><span class="dv">${escapeHtml(email)}</span></div>
+    <div class="detail-row"><span class="dk">Hora</span><span class="dv">${time}</span></div>
+    ${isLate ? '<div class="detail-row"><span class="dk">Estado</span><span class="dv" style="color:var(--warn)">TARDÍO</span></div>' : '<div class="detail-row"><span class="dk">Estado</span><span class="dv" style="color:var(--accent-3)">A TIEMPO</span></div>'}
+  `;
+  goStep(3);
+}
+
+function addLogLocal(entry) {
+  renderLog();
+}
+
+function openLb(src) {
+  if (!src) return;
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLb() { document.getElementById('lightbox').classList.remove('show'); }
+
+// ═══════════════════════════════════════════════════════════════
+// 8. VISTA MONITOR
+// ═══════════════════════════════════════════════════════════════
+
+async function refreshMonitor() {
+  if (STATE.online && STATE.fbDb) {
+    const { ref, get } = window.firebaseLib;
+    try {
+      const snap = await get(ref(STATE.fbDb, 'active_session'));
+      const data = snap.val();
+      if (!data) {
+        renderMonitor([]);
+        document.getElementById('monPill').innerHTML = '<span class="dot"></span>SIN SESIÓN';
+        document.getElementById('monPill').classList.add('off');
+        return;
+      }
+      document.getElementById('monPill').innerHTML = `<span class="dot"></span>${data.meta?.subject || 'EN VIVO'}`;
+      document.getElementById('monPill').classList.remove('off');
+      const list = Object.values(data.attendees || {}).sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+      renderMonitor(list);
+    } catch(e) {
+      console.error(e);
+    }
+  } else {
+    document.getElementById('monPill').innerHTML = '<span class="dot"></span>OFFLINE';
+    document.getElementById('monPill').classList.add('off');
+    renderMonitor(STATE.log);
+  }
+}
+
+function renderMonitor(list) {
+  const body = document.getElementById('monBody');
+  const total = list.length;
+  const onTime = list.filter(e => !e.late).length;
+  const late = list.filter(e => e.late).length;
+
+  document.getElementById('monTotal').textContent = total;
+  document.getElementById('monOnTime').textContent = onTime;
+  document.getElementById('monLate').textContent = late;
+
+  if (!list.length) {
+    body.innerHTML = '<div class="log-empty"><div class="ico">📡</div>ESPERANDO REGISTROS…</div>';
+    return;
+  }
+
+  body.innerHTML = '';
+  list.forEach((e, i) => {
+    const row = document.createElement('div');
+    row.className = 'log-entry';
+    const flagsHtml = e.late ? '<span class="flag-chip late">TARDÍO</span>' : '<span class="flag-chip ok">A TIEMPO</span>';
+    const photoHtml = e.photo
+      ? `<img class="log-thumb" src="${e.photo}" alt="">`
+      : `<div class="log-thumb placeholder">👤</div>`;
+    row.innerHTML = `
+      <span class="log-idx">#${list.length - i}</span>
+      ${photoHtml}
+      <div>
+        <div class="log-name">${escapeHtml(e.name)}</div>
+        <div class="log-sub">${escapeHtml(e.carnet)} · ${e.time}</div>
+        <div class="log-flags">${flagsHtml}</div>
+      </div>
+      <span class="token-chip">${e.token}</span>
+      <span></span>
+    `;
+    if (e.photo) {
+      row.querySelector('.log-thumb').addEventListener('click', () => openLb(e.photo));
+    }
+    body.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 9. UTILIDADES
+// ═══════════════════════════════════════════════════════════════
+
+function toast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Cerrar modal con click fuera
+document.getElementById('configModal').addEventListener('click', e => {
+  if (e.target.id === 'configModal') closeConfigModal();
+});
+
+// Exponer funciones globales (para onclick en HTML)
+Object.assign(window, {
+  switchView, openConfigModal, closeConfigModal, testFirebase, saveFirebaseConfig,
+  startSession, rotateQR, stopSession, validateStep1, goStep, handleShutter, retake,
+  exportPDF, exportExcel, exportCSV, clearAttendance, openLb, closeLb,
+  renderLog, refreshMonitor
+});
+
+</script>
+</body>
+</html>
