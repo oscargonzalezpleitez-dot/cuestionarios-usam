@@ -191,6 +191,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--g800);m
 .empty-state{text-align:center;padding:2rem 1rem;color:var(--g400);font-size:.85rem;}
 .empty-icon{font-size:2.5rem;margin-bottom:.5rem;}
 
+/* QR MODAL */
+.qr-modal-overlay{position:fixed;inset:0;background:rgba(10,20,50,.85);z-index:300;display:none;align-items:center;justify-content:center;padding:1.5rem;}
+.qr-modal-overlay.open{display:flex;}
+.qr-box{background:var(--white);border-radius:20px;padding:1.5rem;max-width:320px;width:100%;text-align:center;animation:slideUp .25s cubic-bezier(.22,1,.36,1);}
+.qr-title{font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--navy);margin-bottom:.3rem;}
+.qr-subtitle{font-size:.75rem;color:var(--g600);margin-bottom:1rem;}
+.qr-canvas{display:flex;align-items:center;justify-content:center;margin-bottom:1rem;}
+.qr-url{font-size:.7rem;color:var(--g400);word-break:break-all;background:var(--g100);border-radius:var(--radius-sm);padding:.5rem .65rem;margin-bottom:1rem;font-family:monospace;text-align:left;}
+.qr-close{width:100%;padding:.7rem;background:var(--navy);color:white;border:none;border-radius:var(--radius-sm);font-size:.9rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;}
+
 /* SYNC BANNER */
 .sync-banner{background:var(--green-bg);border:1px solid #a8e0c3;border-radius:var(--radius-sm);padding:.65rem .85rem;font-size:.8rem;color:var(--green);margin-bottom:.75rem;display:none;}
 .sync-banner.visible{display:block;}
@@ -349,7 +359,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--g800);m
   </div>
 </div>
 
+<!-- QR MODAL -->
+<div class="qr-modal-overlay" id="qr-modal-overlay" onclick="closeQR(event)">
+  <div class="qr-box">
+    <div class="qr-title" id="qr-quiz-name"></div>
+    <div class="qr-subtitle">Escanea con la cámara del teléfono</div>
+    <div class="qr-canvas" id="qr-canvas"></div>
+    <div class="qr-url" id="qr-url-text"></div>
+    <button class="qr-close" onclick="document.getElementById('qr-modal-overlay').classList.remove('open')">✕ Cerrar</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script>
 /* ═══════════════════════════════════════════════
@@ -795,6 +817,7 @@ function renderQuizzesView() {
       <div class="qc-meta">${q.questions?.length||0} preguntas · ${q.time||0} min · ${count} envíos</div>
       <div class="qc-actions">
         <button class="btn-qc gold" onclick="copyQuizLink('${q.binId}')">🔗 Copiar enlace</button>
+        <button class="btn-qc" onclick="showQR('${q.binId}','${esc(q.name)}')">📱 QR</button>
         <button class="btn-qc" onclick="filterByQuiz('${esc(q.name)}')">📊 Ver resultados</button>
       </div>
     </div>`;
@@ -806,6 +829,31 @@ function copyQuizLink(binId) {
   navigator.clipboard.writeText(url).then(()=>showToast('✅ Enlace copiado')).catch(()=>{
     prompt('Copia este enlace:', url);
   });
+}
+
+function showQR(binId, name) {
+  const url = `${APP_URL}?q=${binId}`;
+  document.getElementById('qr-quiz-name').textContent = name;
+  document.getElementById('qr-url-text').textContent  = url;
+  const canvas = document.getElementById('qr-canvas');
+  canvas.innerHTML = '';
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'background:#fff;padding:10px;border-radius:8px;display:inline-block;';
+  canvas.appendChild(wrapper);
+  new QRCode(wrapper, {
+    text: url,
+    width: 200,
+    height: 200,
+    colorDark: '#0f2044',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  document.getElementById('qr-modal-overlay').classList.add('open');
+}
+
+function closeQR(e) {
+  if (e && e.target !== document.getElementById('qr-modal-overlay')) return;
+  document.getElementById('qr-modal-overlay').classList.remove('open');
 }
 
 function filterByQuiz(name) {
