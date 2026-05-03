@@ -408,11 +408,47 @@ let studentAnswers = {}, timerInterval = null, timeLeft = 0;
 let photoDataUrl = null, cameraStream = null, blurCount = 0, quizActive = false;
 const BASE_URL = window.location.origin + window.location.pathname;
 
+// ══════════════════════════════════════════════════════════════
+// PARCHE: BroadcastChannel — Emisor de señales alumno activo
+// ══════════════════════════════════════════════════════════════
+const _studentChannel = (typeof BroadcastChannel !== 'undefined')
+  ? new BroadcastChannel('usam_active_students')
+  : null;
 
+let _heartbeatInterval = null;
+
+/**
+ * Emite un evento al canal para que el panel docente lo reciba.
+ * type: 'student-active' | 'student-inactive' | 'student-blur' | 'student-heartbeat'
+ */
+function _broadcastStudentEvent(type) {
+  if (!_studentChannel) return;
+  try {
+    _studentChannel.postMessage({
+      type,
+      studentName: currentStudent ? currentStudent.name : '',
+      studentCarnet: currentStudent ? currentStudent.carnet : '',
+      quizName: currentQuiz ? currentQuiz.name : '',
+      quizId: currentQuiz ? currentQuiz.id : null,
+      ts: Date.now()
+    });
+  } catch(e) {}
+}
+
+function _startHeartbeat() {
+  _stopHeartbeat();
+  _heartbeatInterval = setInterval(() => {
+    if (quizActive) _broadcastStudentEvent('student-heartbeat');
+  }, 15000); // cada 15 segundos
+}
+
+function _stopHeartbeat() {
+  if (_heartbeatInterval) { clearInterval(_heartbeatInterval); _heartbeatInterval = null; }
+}
+// ══════════════════════════════════════════════════════════════
 
 const CLOUD_API = 'https://api.jsonbin.io/v3/b';
 const JKEY = '$2a$10$C2DJcKFtIYQMvrmMJ64oYuMnkdH6I9PRx3z3p..uVb5fzo9Be7xTK';
-// Registry bin: stores an ARRAY of individual result bin IDs (one per student submission)
 const REGISTRY_BIN = '69d949f636566621a89cf818';
 
 // ── Cloud helpers ────────────────────────────────────────────────────────────
@@ -457,7 +493,6 @@ async function saveResultToCloud(result) {
     resultToSave.student.photo = await compressPhoto(resultToSave.student.photo);
   }
 
-  // Step 1: Create an individual bin for this student's result
   let binId = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -472,7 +507,6 @@ async function saveResultToCloud(result) {
   }
   if (!binId) { console.warn('Could not create result bin'); return false; }
 
-  // Step 2: Register the bin ID in the registry (with retries)
   for (let attempt = 0; attempt < 5; attempt++) {
     await new Promise(r => setTimeout(r, Math.floor(Math.random() * 1500) + attempt * 600));
     const list = await registryRead();
@@ -506,7 +540,6 @@ async function fetchAllResults() {
   return results;
 }
 
-// Migration: fix quizzes that were saved without binId
 (function migrateQuizzes() {
   try {
     const stored = JSON.parse(localStorage.getItem('usam_quizzes') || '[]');
@@ -524,7 +557,6 @@ async function fetchAllResults() {
       }
     });
     if (changed) localStorage.setItem('usam_quizzes', JSON.stringify(stored));
-    // Clean up old master bin ID — no longer used
     localStorage.removeItem('usam_master_results_bin');
   } catch(e) {}
 })();
@@ -620,7 +652,6 @@ function removeOption(qi,oi) { questions[qi].options.splice(oi,1); if(questions[
 function removeQuestion(i) { questions.splice(i,1); renderQuestions(); }
 function esc(s) { return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
-// SAVE — uploads quiz to JSONBin cloud, generates short URL + QR
 async function saveQuiz() {
   const name = document.getElementById('quiz-name').value.trim();
   const time = parseInt(document.getElementById('quiz-time').value) || 30;
@@ -640,7 +671,6 @@ async function saveQuiz() {
 
   const quiz = { id: Date.now(), name, desc, time, showGrade, questions: JSON.parse(JSON.stringify(questions)), created: new Date().toLocaleString('es-SV') };
 
-  // Show saving spinner
   const saveBtn = document.querySelector('[onclick="saveQuiz()"]');
   const origText = saveBtn.innerHTML;
   saveBtn.innerHTML = '⏳ Guardando en la nube...';
@@ -657,7 +687,6 @@ async function saveQuiz() {
     const binId = data.metadata.id;
     quiz.shareUrl = `${BASE_URL}?q=${binId}`;
     quiz.binId = binId;
-    // Results stored in master bin - no per-quiz bin needed
   } catch(e) {
     saveBtn.innerHTML = origText;
     saveBtn.disabled = false;
@@ -780,7 +809,7 @@ function retakePhoto() {
   document.getElementById('btn-start-cam').style.display = 'inline-flex';
 }
 
-// START QUIZ
+// START QUIZ — PARCHE: emite señal 'student-active' al iniciar
 function startQuiz() {
   const name   = document.getElementById('s-name').value.trim();
   const carnet = document.getElementById('s-carnet').value.trim();
@@ -798,6 +827,10 @@ function startQuiz() {
   renderStudentQuiz(); showView('student');
   startTimer(currentQuiz.time * 60);
   setupAntiCheat();
+
+  // ── PARCHE: notificar al panel docente ──
+  _broadcastStudentEvent('student-active');
+  _startHeartbeat();
 }
 
 function renderStudentQuiz() {
@@ -855,15 +888,22 @@ function removeAntiCheat() {
   document.removeEventListener('visibilitychange',onVisibilityChange);
   window.removeEventListener('blur',onWindowBlur);
 }
-function onVisibilityChange(){if(document.hidden&&quizActive){blurCount++;showFsOverlay();}}
-function onWindowBlur(){if(quizActive){blurCount++;showFsOverlay();}}
+// PARCHE: emitir 'student-blur' cuando cambia ventana
+function onVisibilityChange(){if(document.hidden&&quizActive){blurCount++;showFsOverlay();_broadcastStudentEvent('student-blur');}}
+function onWindowBlur(){if(quizActive){blurCount++;showFsOverlay();_broadcastStudentEvent('student-blur');}}
 function showFsOverlay(){document.getElementById('fs-overlay').classList.add('show');}
 function returnToQuiz(){document.getElementById('fs-overlay').classList.remove('show');}
 
+// PARCHE: emitir 'student-inactive' al enviar
 async function submitQuiz(timeout=false) {
   if(!timeout&&!confirm('¿Seguro que deseas enviar el cuestionario?')) return;
   clearInterval(timerInterval); quizActive=false; removeAntiCheat();
   document.getElementById('fs-overlay').classList.remove('show');
+
+  // ── PARCHE: notificar que el alumno terminó ──
+  _broadcastStudentEvent('student-inactive');
+  _stopHeartbeat();
+
   let totalPoints=0, earned=0;
   const detail=currentQuiz.questions.map((q,i)=>{
     totalPoints+=q.points;
@@ -877,10 +917,8 @@ async function submitQuiz(timeout=false) {
   const pct=totalPoints?Math.round(earned/totalPoints*100):0;
   const result={id:Date.now(),quizId:currentQuiz.id,quizName:currentQuiz.name,student:currentStudent,answers:detail,earned,totalPoints,pct,blurCount,submitTime:new Date().toLocaleString('es-SV'),timedOut:timeout,showGrade:currentQuiz.showGrade};
 
-  // Show saving indicator
   showResultScreen(result, true);
 
-  // Save result to cloud (each student gets their own bin — no collisions)
   try {
     await saveResultToCloud(result);
   } catch(e) {
@@ -1096,7 +1134,6 @@ function _instrumentTable() {
 
 <!-- ══ PWA: Service Worker + Notificaciones + Polling ══ -->
 <script>
-// ── Registro del Service Worker ──────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js')
@@ -1105,7 +1142,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ── Polling en background (badge de no leídos) ───────────────
 (function startBgPolling() {
   const CLOUD_API    = 'https://api.jsonbin.io/v3/b';
   const JKEY         = '$2a$10$C2DJcKFtIYQMvrmMJ64oYuMnkdH6I9PRx3z3p..uVb5fzo9Be7xTK';
@@ -1114,7 +1150,6 @@ if ('serviceWorker' in navigator) {
   let lastKnownCount = parseInt(localStorage.getItem('usam_lastCount') || '0', 10);
   let unread         = parseInt(localStorage.getItem('usam_unread') || '0', 10);
 
-  // Solicitar permiso de notificaciones
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
@@ -1136,7 +1171,6 @@ if ('serviceWorker' in navigator) {
         localStorage.setItem('usam_lastCount', String(count));
         lastKnownCount = count;
 
-        // Notificación nativa
         if (Notification.permission === 'granted') {
           new Notification('\uD83D\uDCDD USAM — Nuevo envío', {
             body: diff + ' nuevo' + (diff > 1 ? 's resultados recibidos' : ' resultado recibido'),
@@ -1147,10 +1181,8 @@ if ('serviceWorker' in navigator) {
           });
         }
 
-        // Vibración (móvil)
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
 
-        // Sonido
         try {
           const ctx = new (window.AudioContext || window.webkitAudioContext)();
           const osc = ctx.createOscillator();
@@ -1163,7 +1195,6 @@ if ('serviceWorker' in navigator) {
           osc.stop(ctx.currentTime + 0.4);
         } catch(e) {}
 
-        // Badge en el título
         updateTitleBadge(unread);
       }
     } catch(e) {}
@@ -1174,11 +1205,9 @@ if ('serviceWorker' in navigator) {
     document.title = n > 0 ? '(' + n + ') ' + base : base;
   }
 
-  // Iniciar polling
   poll();
   setInterval(poll, POLL_MS);
 
-  // Limpiar badge cuando la página del admin esté activa
   window.addEventListener('focus', () => {
     if (window.location.pathname.includes('admin')) {
       unread = 0;
@@ -1187,7 +1216,6 @@ if ('serviceWorker' in navigator) {
     }
   });
 
-  // Restaurar badge al cargar
   if (unread > 0) updateTitleBadge(unread);
 })();
 </script>
